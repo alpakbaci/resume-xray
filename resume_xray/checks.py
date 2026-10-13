@@ -51,6 +51,7 @@ def run_checks(document: Document) -> Report:
         findings=findings,
         sections={name: line.text for name, line in sections.items()},
         fields=fields,
+        section_lines=sections,
     )
 
 

@@ -269,21 +269,51 @@ the case that motivated this check was 7.5% (0.75 pt next to 10 pt text).
 
 ## 3. Job match
 
-### 3.1 Normalization (same for resume and job description)
+Recruiters find candidates in an ATS with keyword and Boolean searches over resume text. Greenhouse,
+for example, documents a full-text "search resumes for keywords" feature [10] and Boolean queries in
+which matching "plurals or different word forms" needs an explicit `*` wildcard [11]; neither page
+mentions synonym expansion. Job matching therefore asks: **would a search with the job's own words
+find this resume?** Some ATSs may stem words or expand synonyms; since that is not documented for
+the systems we checked, such matches get partial credit and an explanation instead of full credit.
 
-1. Unicode NFKC normalization.
-2. **Turkish-aware lowercasing:** `I → ı`, `İ → i`. Python's `str.lower()` gives wrong results for
-   Turkish; this is the most common matching bug on Turkish text.
-3. `+`, `#` and `.` are kept; otherwise `C++`, `C#`, `.NET` are lost.
-4. Snowball stemming (language detected by counting stopwords): "Python'da" → "python".
+### 3.1 Normalization
 
-### 3.2 Term extraction from the job description
+1. **Language** of each text (resume, job description) is detected by counting common English and
+   Turkish function words.
+2. **Apostrophe suffixes** are dropped: "Python'da" → "Python" (Turkish attaches suffixes to proper
+   nouns with an apostrophe).
+3. **Lowercasing:** `İ → i` in every language; `I → ı` only in Turkish text. Python's plain
+   `str.lower()` gets both wrong for Turkish.
+4. **Tokens** keep `+`, `#`, `.` and `&` inside them, so `C++`, `C#`, `.NET`, `Node.js` and `R&D`
+   stay whole (and `R&D` is not mistaken for the R language).
+5. Each token gets two keys, both folded to ASCII (`ş → s`, `ı → i`, ...):
+   - **surface:** the word as written, lowercased;
+   - **stem:** its Snowball stem in the text's language (English or Turkish): "managed" and
+     "management" share the stem "manag".
 
-- **Skill dictionary:** matches of 1–3 words. The dictionary contains synonyms
-  (`k8s → kubernetes`, `js → javascript`). It starts as a hand-curated technology list; ESCO
-  (28 languages including Turkish) will be added later.
-- **Technical-looking words:** words containing digits, `+`, `#`, or written in CamelCase are taken
-  as candidate terms.
+### 3.2 Terms of the job description
+
+**Sections.** A short line (at most `heading_max_words` words) that matches a known heading in
+`resume_xray/data/job_sections.toml` (`rapidfuzz.fuzz.ratio ≥ heading_match_min`) starts a section:
+
+| Section kind | Examples | Effect |
+|---|---|---|
+| Required | Requirements, Qualifications, Responsibilities, Aranan Nitelikler, Sorumluluklar | Terms are required |
+| Preferred | Nice to have, Preferred, Bonus, Tercih Sebepleri | Terms are preferred |
+| Ignored | About Us, Benefits, What We Offer, Hakkımızda, Yan Haklar | Lines are skipped |
+| (none yet) | Text before the first heading | Treated as required |
+
+A line containing a preference cue ("is a plus", "preferred", "tercih sebebidir", ...) makes its
+terms preferred in any section. The first line that is not a heading is taken as the **job title**.
+
+**Terms.**
+
+- **Skill dictionary** (`resume_xray/data/skills.toml`): each skill lists every wording that means
+  it (`Kubernetes`, `K8s`). The job is searched by **stem**, longest wordings first, without
+  overlaps, so "React Native" is not also counted as "React". The wording the job actually used is
+  kept. Wordings of one or two characters (`R`, `C`, `Go`, `UI`) must also match capitals.
+- **Technical-looking words** not in the dictionary: words with a letter and a digit, `+` or `#`, or
+  CamelCase (`PostgreSQL`, `ISO27001`, `iOS`).
 
 ### 3.3 Term weight (`required_weight = 1.0`, `preferred_weight = 0.5`)
 
@@ -291,31 +321,30 @@ the case that motivated this check was 7.5% (0.75 pt next to 10 pt text).
 w_t = r_t × (1 + ln(1 + f_t))
 ```
 
-**`r_t` — requirement factor**
-
-| Job description section the term appears in | `r_t` |
-|---|---|
-| "Requirements", "Must have", "Aranan nitelikler" | 1.0 |
-| "Nice to have", "Preferred", "Tercih sebebi" | 0.5 |
-| Unclear | 1.0 |
+**`r_t` — requirement factor:** `1.0` for required terms, `0.5` for preferred ones. A term that is
+both required and preferred somewhere counts as required.
 
 *Justification:* We trust the job author's own required/preferred split. 0.5 is the simplest form
-of the assumption "a preferred term is half as important as a required one". Unclear sections are
-treated as required so that gaps are not missed.
+of the assumption "a preferred term is half as important as a required one". Text outside a known
+section is treated as required so that gaps are not missed; sections about the company and its
+benefits are skipped because their tools (e.g. "we use Slack") are not requirements.
 
-**`f_t` — number of times the term appears in the job description**
+**`f_t` — number of times the term appears in the counted lines.**
 
 *Justification:* The more often a term appears, the more important it is, but the effect is
 **saturated** with a logarithm: a term appearing once gets ×1.69 weight, one appearing 5 times gets
 ×2.79 (not 5×). This is the same idea as term-frequency saturation in BM25, and it keeps a single
 word repeated 10 times from overwhelming all other terms.
 
-### 3.4 Match level (`synonym_match = 0.5`)
+### 3.4 Match level (`word_form_match = 0.5`, `synonym_match = 0.5`)
+
+The resume is searched in its column-aware (PDF) or all-parts (DOCX) reading:
 
 | Case | `m_t` | Justification |
 |---|---|---|
-| Exact match after normalization | 1.0 | A recruiter searching with the job's wording finds it |
-| Only a synonym is present (job says "Kubernetes", resume says "k8s") | 0.5 | Same meaning, but ATS search is word-based and may miss it. The user is told to also add the job's wording |
+| **Exact:** one of the job's wordings, same surface key | 1.0 | A keyword search with the job's word finds it |
+| **Word form:** same stem, different form ("roadmaps" / "roadmap") | 0.5 | Found only with a wildcard search [11]; the user is told which form the job uses |
+| **Synonym:** another wording of the same skill ("Kubernetes" / "K8s") | 0.5 | Same meaning, but synonym expansion is not documented [10, 11]; the user is told to add the job's wording |
 | Absent | 0 | — |
 
 ### 3.5 Coverage
@@ -324,19 +353,24 @@ word repeated 10 times from overwhelming all other terms.
 Coverage = Σ (w_t × m_t) / Σ w_t
 ```
 
-Computed and shown **separately** for required and preferred terms.
+Computed and shown **separately** for required and preferred terms. No overall score is formed.
 
-Where the term appears in the resume (an experience bullet vs. only the skills list) is also
-reported, but it **does not affect coverage**. ATS search finds it in either place; the fact that
-an in-context mention is more valuable is advice about the human reader.
+For every term found, the report also shows:
 
-### 3.6 Separate checks (not part of coverage)
+- **where** it appears, by the resume's own section headings (an experience bullet vs. only the
+  skills list). This does **not** affect coverage: search finds it in either place; an in-context
+  mention matters to the human reader.
+- **in which readings it is lost**, if any: a term found in the column-aware reading but not in,
+  say, the content-stream reading (because a letter was split off, see 2.4) is not found by an ATS
+  that reads that way.
+
+### 3.6 Separate checks (not part of coverage, `title_match_min = 85`)
 
 | Check | Method | Why separate |
 |---|---|---|
-| Job title | Job title vs. titles in the resume: `rapidfuzz.fuzz.token_set_ratio ≥ 85` | The field recruiters search most |
-| Years of experience | "5+ years" pattern in the job; resume date ranges merged (overlapping periods counted once) | A knockout criterion, must not be mixed with coverage |
-| Degree | "bachelor/lisans" etc. patterns searched in the education section | A knockout criterion |
+| Job title | The job title is found in a resume line when `rapidfuzz.fuzz.token_set_ratio ≥ 85` (all the title's words on one line, small spelling differences allowed) | The field recruiters search most |
+| Years of experience | The largest "N+ years" / "N yıl" in the counted lines of the job. In the resume, date ranges in the experience section (`MM/YYYY`, `Jan 2021`, `Oca 2021`, `2021`, "Present" / "Günümüz" = today) are merged so that overlapping periods count once. A year without a month starts in January and ends in December | A knockout criterion, must not be mixed with coverage |
+| Degree | Levels Bachelor < Master < PhD, recognized in English and Turkish ("lisans", "yüksek lisans", "doktora", "BSc", "MSc"). The job's requirement is the **lowest** level it mentions ("Bachelor's or Master's" → Bachelor); the resume's is the **highest** level in its education section | A knockout criterion |
 
 ---
 
@@ -399,3 +433,7 @@ Checked on 2026-10-14.
 9. ITU-T, *Recommendation E.164: The international public telecommunication numbering plan*.
    https://www.itu.int/rec/T-REC-E.164 (the 15-digit limit is summarized at
    https://en.wikipedia.org/wiki/E.164; the recommendation text itself is not freely shown)
+10. Greenhouse, *Search resumes for keywords*.
+    https://support.greenhouse.io/hc/en-us/articles/115004600186-Search-resumes-for-keywords
+11. Greenhouse, *Search candidates using Boolean queries*.
+    https://support.greenhouse.io/hc/en-us/articles/202360199-Search-candidates-using-Boolean-queries

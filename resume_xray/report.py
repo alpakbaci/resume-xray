@@ -30,6 +30,8 @@ class Report:
     sections: dict[str, str] = field(default_factory=dict)
     # Contact fields found in the text: email, phone, linkedin.
     fields: dict[str, str] = field(default_factory=dict)
+    # Canonical section name -> its heading line, for job matching. Not part of the JSON output.
+    section_lines: dict = field(default_factory=dict, repr=False)
 
     @property
     def verdict(self) -> Verdict:

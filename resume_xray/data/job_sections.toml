@@ -1,0 +1,8 @@
+# Job description section headings (ALGORITHM.md §3.3), English and Turkish.
+
+required = ["Requirements", "Qualifications", "Required Qualifications", "Must Have", "Must Haves", "What You Bring", "What We Are Looking For", "Who You Are", "Responsibilities", "What You Will Do", "Your Role", "The Role", "Job Description", "Aranan Nitelikler", "Nitelikler", "Gereksinimler", "Genel Nitelikler", "İş Tanımı", "Sorumluluklar", "Görev ve Sorumluluklar", "Beklentilerimiz"]
+preferred = ["Nice to Have", "Nice to Haves", "Preferred", "Preferred Qualifications", "Bonus", "Bonus Points", "Pluses", "Tercih Sebepleri", "Tercih Sebebi", "Tercihen", "Artı Değer", "Artılar"]
+ignored = ["About Us", "About the Company", "Who We Are", "Benefits", "Perks", "What We Offer", "Why Join Us", "Hakkımızda", "Biz Kimiz", "Yan Haklar", "Neler Sunuyoruz", "Sunduklarımız"]
+
+# A line containing one of these marks its terms as preferred, whatever section it is in.
+preferred_cues = ["nice to have", "is a plus", "are a plus", "a plus", "preferred", "preferably", "bonus", "tercih sebebi", "tercih sebebidir", "tercihen", "tercih edilir", "artı değer", "avantaj"]

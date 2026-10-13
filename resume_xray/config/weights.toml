@@ -40,5 +40,11 @@ bullet_size_ratio = 0.5
 required_weight = 1.0
 preferred_weight = 0.5
 
+# 3.4 Match level m_t when the resume uses another form of the job's word (managed / management).
+word_form_match = 0.5
+
 # 3.4 Match level m_t when only a synonym is present.
 synonym_match = 0.5
+
+# 3.6 Job title found in a resume line when token_set_ratio reaches this.
+title_match_min = 85

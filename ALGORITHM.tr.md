@@ -271,21 +271,52 @@ işaretleri metin boyutunun %50–100'ü kadardır (kendi gözlemimiz); bu kontr
 
 ## 3. İlan kapsaması
 
-### 3.1 Normalleştirme (CV ve ilan için aynı)
+İşe alımcılar ATS'de adayları CV metni üzerinde anahtar kelime ve Boolean aramalarıyla bulur.
+Örneğin Greenhouse, tam metin "CV'lerde anahtar kelime arama" özelliğini [10] ve "çoğulları veya
+farklı kelime biçimlerini" bulmak için açıkça `*` joker karakteri gereken Boolean sorgularını [11]
+belgeler; iki sayfa da eş anlamlı genişletmeden söz etmez. Bu yüzden ilan eşleştirmesi şunu sorar:
+**ilanın kendi kelimeleriyle yapılan bir arama bu CV'yi bulur mu?** Bazı ATS'ler kelimeleri kök
+haline getirebilir veya eş anlamlıları genişletebilir; incelediğimiz sistemlerde bu belgelenmediği
+için bu tür eşleşmeler tam puan yerine kısmi puan ve açıklama alır.
 
-1. Unicode NFKC dönüşümü.
-2. **Türkçe uyumlu küçük harf:** `I → ı`, `İ → i`. Python'un `str.lower()` fonksiyonu Türkçede
-   yanlış sonuç verir; bu, Türkçe metinlerde en sık görülen eşleşme hatasıdır.
-3. `+`, `#` ve `.` korunur; aksi halde `C++`, `C#`, `.NET` kaybolur.
-4. Snowball ile kök bulma (dil, stopword sayımıyla tespit edilir): "Python'da" → "python".
+### 3.1 Normalleştirme
 
-### 3.2 İlandan terim çıkarma
+1. Her metnin (CV, ilan) **dili**, yaygın İngilizce ve Türkçe bağlaç/edatlar sayılarak bulunur.
+2. **Kesme işaretinden sonraki ekler** atılır: "Python'da" → "Python" (Türkçe, özel isimlere ekleri
+   kesme işaretiyle bağlar).
+3. **Küçük harf:** `İ → i` her dilde; `I → ı` yalnızca Türkçe metinde. Python'un düz
+   `str.lower()` fonksiyonu Türkçede ikisini de yanlış yapar.
+4. **Kelimeler** içlerindeki `+`, `#`, `.` ve `&` karakterlerini korur; böylece `C++`, `C#`, `.NET`,
+   `Node.js` ve `R&D` bütün kalır (`R&D`, R dili sanılmaz).
+5. Her kelimenin, ikisi de ASCII'ye katlanmış (`ş → s`, `ı → i`, ...) iki anahtarı vardır:
+   - **yüzey:** kelimenin yazıldığı hali, küçük harfle;
+   - **kök:** metnin dilinde (İngilizce veya Türkçe) Snowball kökü: "managed" ve "management"
+     aynı köke ("manag") sahiptir.
 
-- **Yetenek sözlüğü:** 1–3 kelimelik eşleşmeler. Sözlük eş anlamlıları içerir
-  (`k8s → kubernetes`, `js → javascript`). Başlangıçta elle hazırlanmış bir teknoloji listesi;
-  sonraki aşamada ESCO (Türkçe dahil 28 dil) eklenecek.
-- **Teknik görünümlü kelimeler:** Rakam, `+`, `#` içeren veya CamelCase yazılan kelimeler aday
-  terim olarak alınır.
+### 3.2 İlanın terimleri
+
+**Bölümler.** `resume_xray/data/job_sections.toml` içindeki bilinen bir başlıkla eşleşen
+(`rapidfuzz.fuzz.ratio ≥ heading_match_min`) kısa bir satır (en fazla `heading_max_words` kelime)
+yeni bir bölüm başlatır:
+
+| Bölüm türü | Örnekler | Etkisi |
+|---|---|---|
+| Zorunlu | Requirements, Responsibilities, Aranan Nitelikler, Sorumluluklar | Terimler zorunludur |
+| Tercihli | Nice to have, Preferred, Tercih Sebepleri | Terimler tercihlidir |
+| Yok sayılan | About Us, Benefits, Hakkımızda, Yan Haklar | Satırlar atlanır |
+| (henüz yok) | İlk başlıktan önceki metin | Zorunlu sayılır |
+
+Tercih ifadesi ("is a plus", "preferred", "tercih sebebidir", ...) içeren bir satırdaki terimler,
+hangi bölümde olursa olsun tercihli sayılır. Başlık olmayan ilk satır **pozisyon adı** kabul edilir.
+
+**Terimler.**
+
+- **Yetenek sözlüğü** (`resume_xray/data/skills.toml`): her yetenek, aynı anlama gelen tüm
+  yazımlarını listeler (`Kubernetes`, `K8s`). İlan **kök** ile, en uzun yazımlar önce ve örtüşmeden
+  taranır; böylece "React Native" ayrıca "React" sayılmaz. İlanın kullandığı yazım saklanır. Bir
+  veya iki karakterli yazımlar (`R`, `C`, `Go`, `UI`) büyük/küçük harf olarak da eşleşmelidir.
+- **Sözlükte olmayan teknik görünümlü kelimeler:** harfle birlikte rakam, `+` veya `#` içeren ya da
+  CamelCase yazılan kelimeler (`PostgreSQL`, `ISO27001`, `iOS`).
 
 ### 3.3 Terim ağırlığı (`required_weight = 1.0`, `preferred_weight = 0.5`)
 
@@ -293,31 +324,30 @@ işaretleri metin boyutunun %50–100'ü kadardır (kendi gözlemimiz); bu kontr
 w_t = r_t × (1 + ln(1 + f_t))
 ```
 
-**`r_t` — gereklilik katsayısı**
-
-| Terimin geçtiği ilan bölümü | `r_t` |
-|---|---|
-| "Aranan nitelikler", "Requirements", "Must have" | 1.0 |
-| "Tercih sebebi", "Nice to have", "Artı" | 0.5 |
-| Belirsiz | 1.0 |
+**`r_t` — gereklilik katsayısı:** zorunlu terimler için `1.0`, tercihli olanlar için `0.5`. Bir
+yerde zorunlu, başka yerde tercihli geçen terim zorunlu sayılır.
 
 *Gerekçe:* İlanı yazanın kendi zorunlu/tercihli ayrımına güvenilir. 0.5, "tercih edilen bir
-terim, zorunlu bir terimin yarısı kadar önemlidir" varsayımının en sade halidir. Belirsiz
-bölümler, eksikliği gözden kaçırmamak için zorunlu sayılır.
+terim, zorunlu bir terimin yarısı kadar önemlidir" varsayımının en sade halidir. Bilinen bir
+bölümün dışındaki metin, eksikliği gözden kaçırmamak için zorunlu sayılır; şirket ve yan haklar
+bölümleri atlanır, çünkü oradaki araçlar ("Slack kullanıyoruz") gereklilik değildir.
 
-**`f_t` — terimin ilanda geçme sayısı**
+**`f_t` — terimin sayılan satırlarda geçme sayısı.**
 
-*Gerekçe:* Bir terim ilanda ne kadar sık geçiyorsa o kadar önemlidir, ancak etkisi logaritmayla
+*Gerekçe:* Bir terim ne kadar sık geçiyorsa o kadar önemlidir, ancak etkisi logaritmayla
 **doyurulur**: 1 kez geçen terim ×1.69, 5 kez geçen ×2.79 ağırlık alır (5 kat değil). Bu, BM25'teki
-terim sıklığı doygunluğuyla aynı fikirdir ve ilanda 10 kez tekrarlanan tek bir kelimenin diğer
-tüm terimleri ezmesini önler.
+terim sıklığı doygunluğuyla aynı fikirdir ve 10 kez tekrarlanan tek bir kelimenin diğer tüm
+terimleri ezmesini önler.
 
-### 3.4 Eşleşme seviyesi (`synonym_match = 0.5`)
+### 3.4 Eşleşme seviyesi (`word_form_match = 0.5`, `synonym_match = 0.5`)
+
+CV, sütun farkındalıklı (PDF) veya tüm bölümler (DOCX) okumasında aranır:
 
 | Durum | `m_t` | Gerekçe |
 |---|---|---|
-| Normalleştirme sonrası tam eşleşme | 1.0 | İşe alımcı ilandaki kelimeyle aradığında bulur |
-| Yalnızca eş anlamlı var (ilan "Kubernetes", CV "k8s") | 0.5 | Anlam aynı, ama ATS araması kelime bazlıdır ve bulamayabilir. Kullanıcıya "ilandaki yazımı da ekleyin" önerilir |
+| **Tam:** ilanın yazımlarından biri, aynı yüzey anahtarı | 1.0 | İlanın kelimesiyle yapılan arama bulur |
+| **Kelime biçimi:** aynı kök, farklı biçim ("roadmaps" / "roadmap") | 0.5 | Yalnızca joker karakterli aramayla bulunur [11]; kullanıcıya ilanın hangi biçimi kullandığı söylenir |
+| **Eş anlamlı:** aynı yeteneğin başka yazımı ("Kubernetes" / "K8s") | 0.5 | Anlam aynı, ama eş anlamlı genişletme belgelenmemiş [10, 11]; kullanıcıya ilanın yazımını eklemesi söylenir |
 | Yok | 0 | — |
 
 ### 3.5 Kapsama
@@ -326,19 +356,24 @@ tüm terimleri ezmesini önler.
 Kapsama = Σ (w_t × m_t) / Σ w_t
 ```
 
-Zorunlu ve tercih edilen terimler için **ayrı ayrı** hesaplanır ve gösterilir.
+Zorunlu ve tercihli terimler için **ayrı ayrı** hesaplanır ve gösterilir. Genel bir puan oluşturulmaz.
 
-Terimin CV'de nerede geçtiği (deneyim maddesi mi, yalnızca yetenek listesi mi) de raporlanır,
-ancak **kapsamayı etkilemez**. ATS araması iki yerde de bulur; deneyim içinde geçmesinin daha
-değerli olması insan okuyucuya ilişkin bir tavsiyedir.
+Bulunan her terim için rapor ayrıca şunları gösterir:
 
-### 3.6 Ayrı kontroller (kapsamaya karışmaz)
+- CV'nin kendi bölüm başlıklarına göre **nerede** geçtiği (deneyim maddesi mi, yalnızca yetenek
+  listesi mi). Bu, kapsamayı **etkilemez**: arama iki yerde de bulur; bağlam içinde geçmesi insan
+  okuyucu için önemlidir.
+- Varsa **hangi okumalarda kaybolduğu**: sütun farkındalıklı okumada bulunup örneğin içerik akışı
+  okumasında bulunmayan bir terim (bir harf ayrıldığı için, bkz. 2.4), o şekilde okuyan bir ATS'de
+  bulunamaz.
+
+### 3.6 Ayrı kontroller (kapsamaya karışmaz, `title_match_min = 85`)
 
 | Kontrol | Yöntem | Neden ayrı |
 |---|---|---|
-| Pozisyon başlığı | İlan başlığı ile CV'deki başlıklar: `rapidfuzz.fuzz.token_set_ratio ≥ 85` | İşe alımcıların en çok aradığı alan |
-| Deneyim yılı | İlandaki "5+ yıl" kalıbı; CV'deki tarih aralıkları birleştirilir (çakışan dönemler bir kez sayılır) | Eleme kriteridir, kapsamayla karıştırılmamalı |
-| Diploma | İlandaki "lisans/bachelor" vb. kalıplar eğitim bölümünde aranır | Eleme kriteridir |
+| Pozisyon adı | `rapidfuzz.fuzz.token_set_ratio ≥ 85` ise pozisyon adı bir CV satırında bulunmuş sayılır (adın tüm kelimeleri bir satırda, küçük yazım farklarına izin verilerek) | İşe alımcıların en çok aradığı alan |
+| Deneyim yılı | İlanın sayılan satırlarındaki en büyük "N+ years" / "N yıl". CV'de deneyim bölümündeki tarih aralıkları (`MM/YYYY`, `Jan 2021`, `Oca 2021`, `2021`, "Present" / "Günümüz" = bugün), çakışan dönemler bir kez sayılacak şekilde birleştirilir. Ayı olmayan bir yıl ocakta başlar, aralıkta biter | Eleme kriteridir, kapsamayla karıştırılmamalı |
+| Diploma | Lisans < Yüksek lisans < Doktora seviyeleri İngilizce ve Türkçe tanınır ("lisans", "yüksek lisans", "doktora", "BSc", "MSc"). İlanın şartı andığı **en düşük** seviyedir ("Bachelor's or Master's" → Lisans); CV'ninki eğitim bölümündeki **en yüksek** seviyedir | Eleme kriteridir |
 
 ---
 

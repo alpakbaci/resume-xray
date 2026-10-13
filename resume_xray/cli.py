@@ -7,6 +7,7 @@ from dataclasses import asdict
 
 from resume_xray import __version__
 from resume_xray.checks import run_checks
+from resume_xray.match import MatchReport, match_job
 from resume_xray.models import STRATEGY_NAMES, Document
 from resume_xray.readers import UnsupportedFormat, read_document
 from resume_xray.report import Report
@@ -49,10 +50,25 @@ def main(argv: list[str] | None = None) -> int:
         print(format_raw(document))
         return 0
     report = run_checks(document)
+    match = None
+    if args.job:
+        try:
+            with open(args.job, encoding="utf-8") as f:
+                job_text = f.read()
+        except OSError as error:
+            print(f"resume-xray: {error}", file=sys.stderr)
+            return 2
+        match = match_job(document, job_text, report.section_lines)
     if args.json:
-        print(json.dumps({**asdict(report), "verdict": report.verdict}, ensure_ascii=False, indent=2))
+        data = {**asdict(report), "verdict": report.verdict}
+        data.pop("section_lines", None)
+        if match:
+            data["job_match"] = asdict(match)
+        print(json.dumps(data, ensure_ascii=False, indent=2))
     else:
         print(format_report(report))
+        if match:
+            print(format_match(match))
     return 0
 
 
@@ -78,6 +94,45 @@ def format_report(report: Report) -> str:
     out.append("\nSections found: " + (", ".join(report.sections.values()) or "none"))
     out.append("Contact found: " + (", ".join(report.fields.values()) or "none"))
     out.append("\nSee what each ATS reading strategy extracts: resume-xray FILE --raw")
+    return "\n".join(out)
+
+
+LEVEL_SYMBOLS = {"exact": "✔", "word_form": "≈", "synonym": "≈", "missing": "✖"}
+
+
+def format_match(match: MatchReport) -> str:
+    out = ["\n" + "─" * 60, f"Job match: {match.job_title or '(untitled job description)'}"]
+    for kind, coverage in (("required", match.required_coverage), ("preferred", match.preferred_coverage)):
+        terms = [t for t in match.terms if t.kind == kind]
+        if not terms:
+            continue
+        found = sum(t.level != "missing" for t in terms)
+        out.append(f"\n{kind.capitalize()} terms: {coverage:.0%} covered ({found} of {len(terms)} found)")
+        for t in terms:
+            line = f"  {LEVEL_SYMBOLS[t.level]} {t.job_wording}"
+            if t.level == "exact":
+                line += f"  — {', '.join(t.sections)}" if t.sections else ""
+            elif t.level == "word_form":
+                line += f'  — resume says "{t.resume_wording}"; a search for the job\'s word may miss it'
+            elif t.level == "synonym":
+                line += f'  — resume says "{t.resume_wording}"; also write "{t.job_wording}"'
+            if t.lost_in:
+                line += f"  (not found in {', '.join(STRATEGY_NAMES[s] for s in t.lost_in)})"
+            out.append(line)
+    out.append("")
+    if match.job_title:
+        out.append(
+            f'Job title: found in "{match.title_match}"' if match.title_match
+            else f'Job title: "{match.job_title}" does not appear in the resume'
+        )
+    if match.years_required:
+        have = f"{match.years_in_resume:g} years" if match.years_in_resume is not None else "no parseable date ranges"
+        mark = "✔" if match.years_in_resume is not None and match.years_in_resume >= match.years_required else "✖"
+        out.append(f"Experience: job asks {match.years_required}+ years, resume shows {have} {mark}")
+    if match.degree_required:
+        order = ["Bachelor", "Master", "PhD"]
+        ok = match.degree_in_resume and order.index(match.degree_in_resume) >= order.index(match.degree_required)
+        out.append(f"Degree: job asks {match.degree_required}, resume shows {match.degree_in_resume or 'none'} {'✔' if ok else '✖'}")
     return "\n".join(out)
 
 

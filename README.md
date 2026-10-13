@@ -2,7 +2,8 @@
 
 See how an applicant tracking system (ATS) reads your resume, section by section.
 
-> **Status:** under development, not usable yet. See [ROADMAP.md](ROADMAP.md).
+> **Status:** under development. The command-line tool works from source; the web interface is
+> next. See [ROADMAP.md](ROADMAP.md).
 
 - **Local.** Runs on your computer. Your resume never leaves your machine: no uploads, no
   accounts, no telemetry, works offline.
@@ -26,14 +27,22 @@ It does not predict whether you will be hired or reproduce any vendor's score. N
 one. And the often-quoted "75% of resumes are rejected by ATS" is a myth: it comes from a 2012
 sales pitch with no published methodology.
 
-## Installation
-
-Coming with the first release. It will be:
+## Usage (from source)
 
 ```bash
-pip install resume-xray
-resume-xray
+git clone <this repository> && cd resume-xray
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .
 ```
+
+```bash
+resume-xray my_resume.pdf                     # can an ATS parse it?
+resume-xray my_resume.pdf --job job.txt       # ... and which job terms are missing
+resume-xray my_resume.pdf --raw               # the text each ATS reading strategy extracts
+resume-xray my_resume.pdf --json              # machine-readable report
+```
+
+A `pip install resume-xray` release with a local web interface will follow.
 
 ## License
 
