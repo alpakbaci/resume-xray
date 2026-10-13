@@ -1,0 +1,37 @@
+# Every threshold and weight used by ats-checker.
+# Names match ALGORITHM.md; see that file for the justification of each value.
+# tests/test_config.py fails if this file and ALGORITHM.md disagree.
+
+[parseability]
+# 2.1 Text layer: fewer characters than this on a page means a scanned image.
+min_chars_per_page = 50
+
+# 2.2 Garbled character ratio (cid glyphs, U+FFFD, private use area).
+garbled_warn = 0.02
+garbled_critical = 0.10
+
+# 2.3 Multi-column detection: a vertical whitespace gutter.
+gutter_min_width_pt = 15
+gutter_max_coverage = 0.05
+gutter_min_height = 0.5
+gutter_x_range = [0.2, 0.8]
+
+# 2.4 Agreement between the two PDF readers.
+agreement_bag_min = 0.9
+agreement_order_max = 0.7
+
+# 2.5 Header/footer band as a fraction of page height.
+header_footer_band = 0.08
+
+# 2.6 Section heading detection.
+heading_max_words = 4
+heading_size_ratio = 1.15
+heading_match_min = 85
+
+[match]
+# 3.3 Requirement factor r_t.
+required_weight = 1.0
+preferred_weight = 0.5
+
+# 3.4 Match level m_t when only a synonym is present.
+synonym_match = 0.5

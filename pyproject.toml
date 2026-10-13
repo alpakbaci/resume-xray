@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ats-checker"
+dynamic = ["version"]
+description = "See how an ATS reads your resume. Local, open source, no LLM."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Alp Akbaci" }]
+requires-python = ">=3.11"
+dependencies = [
+    "pdfplumber>=0.11",
+    "pypdf>=6.0",
+    "python-docx>=1.2",
+    "snowballstemmer>=3.0",
+    "rapidfuzz>=3.14",
+    "fastapi>=0.143",
+    "uvicorn>=0.54",
+    "python-multipart>=0.0.32",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=9.0"]
+
+[project.scripts]
+ats-checker = "ats_checker.cli:main"
+
+[tool.hatch.version]
+path = "ats_checker/__init__.py"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
