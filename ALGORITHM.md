@@ -53,6 +53,28 @@ thresholds.
 - No `critical`, at least one `warning` → **Risky**
 - Otherwise → **OK**
 
+### 2.0 Reading the document (`line_tolerance_pt = 3`)
+
+Both formats are converted into one shared representation: lines of text with their page, font
+size, boldness and region (body, header, footer, table, text box). PDF lines also carry their
+position in points. All checks below work only on this representation.
+
+**PDF.** `pdfplumber` gives every word with its coordinates, font name and size. Words whose top
+edges are within 3 points of each other form one visual row. A row is then split into separate
+lines wherever the gap between two words is wider than `gutter_min_width_pt` (see 2.3), so the
+left and right columns of a two-column page do not merge into one line. A word counts as bold when
+its font name contains Bold, Black, Heavy, Semibold or Demi. The page's raw text, as a simple ATS
+would extract it, comes from `pdfplumber`; `pypdf` reads the same page a second time for 2.4.
+
+*Justification:* Words on the same row differ in their top edge by at most 1–2 points (for example
+a bold label next to regular text), while the next row is at least one line height away (about
+8 points or more for body text). 3 points sits safely between the two.
+
+**DOCX.** `python-docx` gives paragraphs in body order, tables, and each section's header and
+footer. Text boxes are read from the raw XML (`w:txbxContent`), because `python-docx` does not
+expose them. Font size and boldness come from the runs, falling back to the paragraph style. The
+number of columns declared in the section settings (`w:cols`) is kept for 2.3.
+
 ### 2.1 Text layer (`min_chars_per_page = 50`)
 
 The number of characters extracted from each page, `n_c`, is computed. If `n_c < 50`, the page is

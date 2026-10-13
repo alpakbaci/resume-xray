@@ -50,6 +50,28 @@ Her kontrol bir **şiddet** üretir: `kritik`, `uyarı` veya `bilgi`. Ağırlık
 - `kritik` yok, en az bir `uyarı` → **Riskli**
 - Diğer durumlar → **Uygun**
 
+### 2.0 Belgenin okunması (`line_tolerance_pt = 3`)
+
+İki format da ortak bir ara biçime çevrilir: sayfası, font boyutu, kalınlığı ve bölgesi (gövde,
+üst bilgi, alt bilgi, tablo, metin kutusu) bilinen metin satırları. PDF satırları ayrıca punto
+cinsinden konumlarını taşır. Aşağıdaki tüm kontroller yalnızca bu ara biçim üzerinde çalışır.
+
+**PDF.** `pdfplumber` her kelimeyi koordinatları, font adı ve boyutuyla verir. Üst kenarları
+birbirine 3 puntodan yakın kelimeler tek bir görsel sıra oluşturur. Sıra, iki kelime arasındaki
+boşluğun `gutter_min_width_pt` değerinden (bkz. 2.3) geniş olduğu yerlerden ayrı satırlara
+bölünür; böylece iki sütunlu bir sayfanın sol ve sağ sütunu tek satırda birleşmez. Font adında
+Bold, Black, Heavy, Semibold veya Demi geçen kelime kalın sayılır. Sayfanın basit bir ATS'nin
+çıkaracağı ham metni `pdfplumber`'dan gelir; `pypdf` aynı sayfayı 2.4 için ikinci kez okur.
+
+*Gerekçe:* Aynı sıradaki kelimelerin üst kenarları en fazla 1–2 punto farklıdır (ör. normal metnin
+yanındaki kalın bir etiket); bir sonraki sıra ise en az bir satır yüksekliği (gövde metni için
+yaklaşık 8 punto veya daha fazla) uzaktadır. 3 punto ikisinin arasında güvenli bir değerdir.
+
+**DOCX.** `python-docx` paragrafları gövdedeki sırasıyla, tabloları ve her bölümün üst/alt
+bilgisini verir. Metin kutuları ham XML'den (`w:txbxContent`) okunur, çünkü `python-docx` bunları
+sunmaz. Font boyutu ve kalınlık metin parçalarından (run), yoksa paragraf stilinden alınır. Bölüm
+ayarlarında tanımlı sütun sayısı (`w:cols`) 2.3 için saklanır.
+
 ### 2.1 Metin katmanı (`min_chars_per_page = 50`)
 
 Her sayfadan çıkarılan karakter sayısı `n_c` hesaplanır. `n_c < 50` ise sayfa taranmış bir

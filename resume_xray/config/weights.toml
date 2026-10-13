@@ -2,6 +2,10 @@
 # Names match ALGORITHM.md; see that file for the justification of each value.
 # tests/test_config.py fails if this file and ALGORITHM.md disagree.
 
+[reader]
+# 2.0 Words whose top edges are this close form one visual row.
+line_tolerance_pt = 3
+
 [parseability]
 # 2.1 Text layer: fewer characters than this on a page means a scanned image.
 min_chars_per_page = 50
