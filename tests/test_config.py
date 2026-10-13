@@ -4,7 +4,7 @@ import re
 import tomllib
 from pathlib import Path
 
-from ats_checker.config import load_weights
+from resume_xray.config import load_weights
 
 ALGORITHM = Path(__file__).resolve().parents[1] / "ALGORITHM.md"
 # Matches inline code like `garbled_warn = 0.02` or `gutter_x_range = [0.2, 0.8]`.

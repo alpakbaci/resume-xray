@@ -1,4 +1,4 @@
-# ats-checker
+# resume-xray
 
 See how an applicant tracking system (ATS) reads your resume, section by section.
 
@@ -31,8 +31,8 @@ sales pitch with no published methodology.
 Coming with the first release. It will be:
 
 ```bash
-pip install ats-checker
-ats-checker
+pip install resume-xray
+resume-xray
 ```
 
 ## License

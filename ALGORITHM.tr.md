@@ -2,9 +2,9 @@
 
 [English](ALGORITHM.md)
 
-Bu belge, ats-checker'ın bir CV'yi nasıl analiz ettiğini, hangi hesapları neden yaptığını ve
+Bu belge, resume-xray'ın bir CV'yi nasıl analiz ettiğini, hangi hesapları neden yaptığını ve
 kullandığı her eşik ile ağırlığın gerekçesini anlatır. Koddaki tüm sabitler
-`ats_checker/config/weights.toml` dosyasında bu belgedeki adlarıyla tutulur.
+`resume_xray/config/weights.toml` dosyasında bu belgedeki adlarıyla tutulur.
 
 > **Durum:** Aşağıdaki değerler gerekçeli **başlangıç değerleridir**. Test setiyle
 > kalibre edildikçe güncellenecek ve her değişiklik bu belgeye işlenecektir
@@ -22,7 +22,7 @@ gerçek nedeni vardır:
    yoksa başvuru sonuçlarda görünmez.
 3. **Eleme soruları:** Çalışma izni, deneyim yılı gibi formdaki sorular (CV metniyle ilgisi yoktur).
 
-ats-checker **1. ve 2. maddeyi** ölçer. Ölçmediği şeyler:
+resume-xray **1. ve 2. maddeyi** ölçer. Ölçmediği şeyler:
 
 - İşe alınıp alınmayacağınızı veya "ATS'nin vereceği puanı". Hiçbir ATS üreticisi böyle bir
   puan yayınlamaz; bunu taklit ettiğini söyleyen bir araç tahmin yürütüyordur.

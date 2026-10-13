@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ats-checker"
+name = "resume-xray"
 dynamic = ["version"]
 description = "See how an ATS reads your resume. Local, open source, no LLM."
 readme = "README.md"
@@ -26,10 +26,10 @@ dependencies = [
 dev = ["pytest>=9.0"]
 
 [project.scripts]
-ats-checker = "ats_checker.cli:main"
+resume-xray = "resume_xray.cli:main"
 
 [tool.hatch.version]
-path = "ats_checker/__init__.py"
+path = "resume_xray/__init__.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

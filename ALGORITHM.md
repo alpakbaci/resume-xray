@@ -2,9 +2,9 @@
 
 [Türkçe](ALGORITHM.tr.md)
 
-This document explains how ats-checker analyzes a resume, why each computation is done, and the
+This document explains how resume-xray analyzes a resume, why each computation is done, and the
 justification for every threshold and weight it uses. All constants in the code live in
-`ats_checker/config/weights.toml` under the names used in this document.
+`resume_xray/config/weights.toml` under the names used in this document.
 
 > **Status:** The values below are justified **starting values**. They will be updated as they
 > are calibrated against the test set, and every change will be recorded here
@@ -23,7 +23,7 @@ application goes unseen:
 3. **Knockout questions:** questions on the application form such as work authorization or
    years of experience (unrelated to the resume text).
 
-ats-checker measures **points 1 and 2**. It does not measure:
+resume-xray measures **points 1 and 2**. It does not measure:
 
 - Whether you will be hired, or "the score an ATS would give you". No ATS vendor publishes such a
   score; a tool claiming to reproduce one is guessing.

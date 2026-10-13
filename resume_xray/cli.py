@@ -1,13 +1,13 @@
-"""Command-line entry point: `ats-checker`."""
+"""Command-line entry point: `resume-xray`."""
 
 import argparse
 
-from ats_checker import __version__
+from resume_xray import __version__
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="ats-checker",
+        prog="resume-xray",
         description="See how an ATS reads your resume. Runs locally; nothing leaves your machine.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -18,5 +18,5 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     build_parser().parse_args(argv)
-    print("ats-checker is under development; analysis is not implemented yet. See ROADMAP.md.")
+    print("resume-xray is under development; analysis is not implemented yet. See ROADMAP.md.")
     return 0

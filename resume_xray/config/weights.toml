@@ -1,4 +1,4 @@
-# Every threshold and weight used by ats-checker.
+# Every threshold and weight used by resume-xray.
 # Names match ALGORITHM.md; see that file for the justification of each value.
 # tests/test_config.py fails if this file and ALGORITHM.md disagree.
 

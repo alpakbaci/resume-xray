@@ -1,6 +1,6 @@
 # Third-party licenses
 
-ats-checker is MIT licensed. It uses only permissively licensed components (MIT, BSD, Apache-2.0,
+resume-xray is MIT licensed. It uses only permissively licensed components (MIT, BSD, Apache-2.0,
 PSF; fonts under SIL OFL). Their license texts ship inside each installed package.
 
 Versions below were checked from installed package metadata on 2026-10-14.
@@ -43,7 +43,7 @@ Versions below were checked from installed package metadata on 2026-10-14.
 | h11 | MIT | Uvicorn | https://github.com/python-hyper/h11 |
 
 `opentelemetry-api` is only the tracing interface. Without an OpenTelemetry SDK and exporter
-installed and configured, it does nothing and sends no data. ats-checker installs neither.
+installed and configured, it does nothing and sends no data. resume-xray installs neither.
 
 ## Development only (not shipped to users)
 
