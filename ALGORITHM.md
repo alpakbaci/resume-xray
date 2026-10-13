@@ -168,9 +168,14 @@ A **gutter** is the widest continuous channel, between 20% and 80% of the page w
 15 points wide, where `coverage(x) ≤ 0.05`, provided the lines on its left and on its right each
 span at least 50% of the page's text height.
 
-On a page with a gutter, the content-stream and position readings are compared with the
-column-aware reading (as in 2.4). The finding is a **warning** naming the strategies that scramble
-the columns, or **info** when every strategy keeps them apart.
+On a page with a gutter, a reading **scrambles the columns** when its word order differs from the
+column-aware reading (as in 2.4), or when it puts text from the left and the right column of the
+same row on one output line. The finding is a **warning** naming the strategies that scramble the
+columns, or **info** when every strategy keeps them apart.
+
+*Found while testing:* with a narrow right column (one skill per row), position order glued each
+skill to the end of an experience line, yet kept 85% of the word order; the one-line test catches
+this case.
 
 *Justification:* The gap between columns is usually wider than 15 points, while the gap between
 words is 3–5 points. The 50% height condition avoids flagging single-column pages that only have

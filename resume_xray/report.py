@@ -14,6 +14,9 @@ class Finding:
     title: str
     detail: str
     fix: str | None = None
+    # Language-independent identifier and values, so interfaces can phrase the finding themselves.
+    code: str = ""
+    params: dict = field(default_factory=dict)
     # Reading strategies this problem affects; empty when it does not depend on the reader.
     strategies: tuple[str, ...] = ()
     pages: tuple[int, ...] = ()

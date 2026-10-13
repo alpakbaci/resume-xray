@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=9.0"]
+dev = ["pytest>=9.0", "httpx2>=2.13"]
 
 [project.scripts]
 resume-xray = "resume_xray.cli:main"

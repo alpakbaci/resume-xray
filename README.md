@@ -36,6 +36,7 @@ pip install -e .
 ```
 
 ```bash
+resume-xray                                   # opens the web interface in your browser
 resume-xray my_resume.pdf                     # can an ATS parse it?
 resume-xray my_resume.pdf --job job.txt       # ... and which job terms are missing
 resume-xray my_resume.pdf --job job.txt --add "Scrum Master, SAP FI" --remove "English"

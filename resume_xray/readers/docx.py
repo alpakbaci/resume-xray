@@ -1,6 +1,6 @@
 """DOCX reader: python-docx plus raw XML for text boxes (ALGORITHM.md §2.0)."""
 
-from pathlib import Path
+from io import BytesIO
 
 import docx
 from docx.document import Document as DocxDocument
@@ -14,8 +14,8 @@ MC = "http://schemas.openxmlformats.org/markup-compatibility/2006"
 EMU_PER_PT = 12700
 
 
-def read_docx(path: Path) -> Document:
-    document = docx.Document(str(path))
+def read_docx(source: BytesIO, name: str) -> Document:
+    document = docx.Document(source)
     lines: list[Line] = []
 
     for block in _iter_body(document):
@@ -59,7 +59,7 @@ def read_docx(path: Path) -> Document:
         columns=max((_declared_columns(s) for s in document.sections), default=1),
         links=[r.target_ref for r in document.part.rels.values() if r.is_external and r.reltype.endswith("/hyperlink")],
     )
-    return Document(name=path.name, kind="docx", pages=[page])
+    return Document(name=name, kind="docx", pages=[page])
 
 
 def _iter_body(document: DocxDocument):

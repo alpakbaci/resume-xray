@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>resume-xray</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<a class="skip" href="#main" data-i18n="skip">Skip to the tool</a>
+
+<header class="hero">
+  <nav class="nav wrap" aria-label="Main">
+    <a class="brand" href="/">
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 2 19 6.5v9L11 20 3 15.5v-9Z M3 6.5 11 11l8-4.5 M11 11v9"/></svg>
+      resume-xray
+    </a>
+    <div class="nav-links">
+      <a href="#how" data-i18n="nav_how">How it works</a>
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="tr" aria-pressed="false">TR</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="hero-body wrap">
+    <div class="hero-copy">
+      <h1 data-i18n="hero_title">See your resume the way an ATS reads it.</h1>
+      <p data-i18n="hero_text">Three readers take your file apart, layer by layer. You see every section that gets lost and every word a recruiter's search would miss.</p>
+      <div class="actions">
+        <button type="button" class="btn primary" id="hero-choose" data-i18n="choose">Choose a resume</button>
+        <a class="btn ghost" href="#how" data-i18n="nav_how">How it works</a>
+      </div>
+      <p class="hero-note" data-i18n="hero_note">Runs on your computer. Nothing is uploaded.</p>
+    </div>
+
+    <svg class="blueprint" viewBox="0 6 420 312" role="img" aria-labelledby="bp-title bp-desc">
+      <title id="bp-title">A resume taken apart like a blueprint</title>
+      <desc id="bp-desc">An isometric resume page above its raw text layer and its parsed fields layer. A scan plane moves through the layers. Notes point at a 17 point column gutter, a 0.75 point bullet and a section lost in one of three readers.</desc>
+      <defs>
+        <pattern id="dots-cream" width="5" height="5" patternUnits="userSpaceOnUse"><circle cx="1.2" cy="1.2" r=".8" fill="#FCEEA7" opacity=".55"/></pattern>
+        <pattern id="dots-green" width="5" height="5" patternUnits="userSpaceOnUse"><circle cx="1.2" cy="1.2" r=".9" fill="#3F9E6E"/></pattern>
+        <pattern id="dots-red" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".9" fill="#D72F2F"/></pattern>
+      </defs>
+
+      <g class="bp-verticals"><line x1="200" y1="40" x2="200" y2="150"/><line x1="286.6" y1="90" x2="286.6" y2="200"/><line x1="78.8" y1="110" x2="78.8" y2="220"/><line x1="165.4" y1="164" x2="165.4" y2="270"/></g>
+
+      <g class="layer layer-fields">
+        <polygon class="sheet" points="200,150 286.6,200 165.4,270 78.8,220"/>
+        <polygon class="field ok" points="200,165 226,180 208.7,190 182.7,175"/>
+        <polygon class="field ok" points="234.6,185 260.6,200 243.3,210 217.3,195"/>
+        <polygon class="field plain" points="169.7,182.5 230.3,217.5 213,227.5 152.4,192.5"/>
+        <polygon class="field lost" points="139.4,200 200,235 169.7,252.5 109,217.5"/>
+      </g>
+
+      <g class="layer layer-text">
+        <polygon class="sheet" points="200,95 286.6,145 165.4,215 78.8,165"/>
+        <g class="raw-lines"><line x1="195.7" y1="112.5" x2="234.6" y2="135"/><line x1="178.4" y1="122.5" x2="239" y2="157.5"/><line x1="165.4" y1="130" x2="226" y2="165"/><line x1="152.4" y1="137.5" x2="200" y2="165"/><line x1="130.7" y1="150" x2="161" y2="167.5"/><line x1="117.7" y1="157.5" x2="178.4" y2="192.5"/></g>
+        <circle class="bullet-mark" cx="113" cy="160" r="2.4"/>
+      </g>
+
+      <g class="layer layer-pdf">
+        <polygon class="sheet top" points="200,40 286.6,90 165.4,160 78.8,110"/>
+        <line class="gutter" x1="210" y1="46" x2="149" y2="141"/>
+        <g class="pdf-lines">
+          <line class="heading" x1="195.7" y1="57.5" x2="234.6" y2="80"/>
+          <line class="heading" x1="130.7" y1="95" x2="161" y2="112.5"/>
+          <line x1="178.4" y1="67.5" x2="239" y2="102.5"/><line x1="165.4" y1="75" x2="226" y2="110"/><line x1="152.4" y1="82.5" x2="200" y2="110"/><line x1="117.7" y1="102.5" x2="178.4" y2="137.5"/><line x1="104.7" y1="110" x2="156.7" y2="140"/>
+        </g>
+      </g>
+
+      <g class="scan"><polygon points="200,57 303.9,117 165.4,197 61.4,137"/></g>
+
+      <g class="dims"><line x1="300" y1="90" x2="300" y2="200"/><line x1="296" y1="90" x2="304" y2="90"/><line x1="296" y1="145" x2="304" y2="145"/><line x1="296" y1="200" x2="304" y2="200"/></g>
+      <g class="leaders"><polyline points="180,94 205,22 262,22"/><polyline points="113,160 40,140 18,140"/><polyline points="150,240 112,296 60,296"/></g>
+      <g class="notes">
+        <text x="309" y="94">PDF</text><text x="309" y="149">raw text</text><text x="309" y="204">fields</text>
+        <text class="note n1" x="208" y="18">gutter 17 pt</text>
+        <text class="note n2" x="18" y="134">bullet 0.75 pt</text>
+        <text class="note n3" x="60" y="291">Skills: lost</text><text class="note n3 dim" x="60" y="303">in 1 of 3 readers</text>
+      </g>
+      <g class="titleblock">
+        <rect x="296" y="252" width="120" height="52"/><line x1="296" y1="270" x2="416" y2="270"/><line x1="352" y1="270" x2="352" y2="304"/><line x1="296" y1="287" x2="416" y2="287"/>
+        <text x="301" y="264" class="tb-name">RESUME-XRAY</text><text x="301" y="282">SHEET 1/1</text><text x="357" y="282">3 READERS</text><text x="301" y="299">SCALE 1:1</text><text x="357" y="299">REV {{short_version}}</text>
+      </g>
+    </svg>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <section class="inputs" aria-labelledby="inputs-title">
+    <h2 id="inputs-title" class="visually-hidden" data-i18n="inputs_title">Your files</h2>
+
+    <p class="step"><span class="n">1</span><span data-i18n="step_resume">Your resume</span></p>
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v4h16v-4"/></svg>
+      <span class="drop-text">
+        <span class="drop-title" id="drop-title" data-i18n="drop_title">Drop a PDF or DOCX here</span>
+        <span class="drop-sub" id="drop-sub" data-i18n="drop_sub">or choose a file. It stays on your computer.</span>
+      </span>
+      <span class="btn ghost" aria-hidden="true" data-i18n="browse">Browse</span>
+    </label>
+    <p class="error" id="file-error" role="alert" hidden></p>
+
+    <p class="step"><span class="n">2</span><span data-i18n="step_job">Job description</span> <span class="opt" data-i18n="step_job_opt">optional, for keyword matching</span></p>
+    <label class="visually-hidden" for="job" data-i18n="step_job">Job description</label>
+    <textarea id="job" rows="5" data-i18n-placeholder="job_placeholder" placeholder="Paste the job ad here"></textarea>
+    <div class="title-row">
+      <label for="title" data-i18n="title_label">Job title</label>
+      <input id="title" type="text" autocomplete="off" data-i18n-placeholder="title_placeholder" placeholder="Taken from the job ad when it starts with one">
+    </div>
+  </section>
+
+  <section class="results" id="results" aria-live="polite" hidden>
+    <h2 data-i18n="results_title">Your results</h2>
+    <p class="busy" id="busy" hidden data-i18n="busy">Reading your resume…</p>
+
+    <div class="summary">
+      <div><strong id="sum-read"></strong><p id="sum-read-text"></p></div>
+      <div><strong id="sum-match"></strong><p id="sum-match-text"></p></div>
+    </div>
+
+    <h3 data-i18n="fix_title">What to fix</h3>
+    <ul class="findings" id="findings"></ul>
+    <p class="all-good" id="all-good" hidden data-i18n="all_good">Nothing to fix. Every reading method we tried reads your resume correctly.</p>
+
+    <div id="keywords" hidden>
+      <h3 data-i18n="kw_title">Keywords from the job</h3>
+      <div class="bar" id="bar" role="img"></div>
+      <div id="groups"></div>
+      <form class="add" id="add-form">
+        <label class="visually-hidden" for="add-input" data-i18n="add_label">Add a keyword</label>
+        <input id="add-input" type="text" autocomplete="off" data-i18n-placeholder="add_placeholder" placeholder="Add a keyword, e.g. Scrum Master">
+        <button type="submit" class="btn ghost" data-i18n="add">Add</button>
+      </form>
+      <p class="hint" data-i18n="kw_hint">Dotted outline marks keywords you added. Click a keyword to remove it.</p>
+      <ul class="checks" id="checks"></ul>
+    </div>
+
+    <details class="tech">
+      <summary data-i18n="tech_title">Show technical details</summary>
+      <p class="hint" data-i18n="tech_text">resume-xray reads your file three ways, like the text extractors ATSs use. A problem that breaks one of them affects some ATSs.</p>
+      <ul class="tech-findings" id="tech-findings"></ul>
+      <div class="readings" id="readings"></div>
+    </details>
+  </section>
+
+  <section class="how" id="how" aria-labelledby="how-title">
+    <h2 id="how-title" data-i18n="how_title">How it works</h2>
+    <ol>
+      <li data-i18n="how_1">Your file is read three ways, the way common ATS text extractors read it: in the order it is stored, top to bottom across the page, and column by column.</li>
+      <li data-i18n="how_2">Checks compare those readings and report what gets lost, scrambled or split, and in which kind of reader.</li>
+      <li data-i18n="how_3">Keyword matching asks one question: would a recruiter's search with the job's own words find you? Other word forms and synonyms get half credit.</li>
+      <li data-i18n="how_4">There is no single "ATS score", because no ATS publishes one. Every rule, threshold and source is documented in ALGORITHM.md in the repository.</li>
+    </ol>
+    <p class="hint" data-i18n="how_privacy">Everything runs on your computer. The page cannot connect to any other address, no data is stored, and no AI model is used.</p>
+  </section>
+</main>
+
+<footer class="foot wrap"><span>resume-xray {{version}}</span><span data-i18n="license">Open source, MIT license</span></footer>
+
+<script src="/static/i18n.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

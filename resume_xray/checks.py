@@ -78,6 +78,8 @@ def check_text_layer(document: Document, weights: dict) -> list[Finding]:
             check="2.1",
             severity="critical",
             title="No text layer",
+            code="no_text_layer",
+            params={"pages": empty},
             detail=f"{where} fewer than {minimum} characters of text. It is most likely a scanned image "
             "or text converted to outlines, so an ATS without OCR sees nothing there.",
             fix="Export the resume from the original editor (Word, Google Docs, ...) as a text PDF.",
@@ -106,6 +108,8 @@ def check_garbled(document: Document, weights: dict) -> list[Finding]:
             check="2.2",
             severity="critical" if ratio > weights["garbled_critical"] else "warning",
             title="Unreadable characters",
+            code="garbled",
+            params={"ratio": round(ratio, 3)},
             detail=f"{ratio:.0%} of the characters cannot be turned into text (fonts without a "
             "character map, or icon fonts). An ATS stores them as garbage.",
             fix="Use a standard font and replace icons with plain words (Email:, Phone:).",
@@ -134,7 +138,10 @@ def check_reading_order(document: Document, weights: dict) -> list[Finding]:
             if text is None:
                 failed.add(strategy)
                 continue
-            if Indel.normalized_similarity(tokens(text), reference) < weights["agreement_order_max"]:
+            scrambled = Indel.normalized_similarity(tokens(text), reference) < weights["agreement_order_max"]
+            if page.gutter and not scrambled:
+                scrambled = mixes_columns(page, text)
+            if scrambled:
                 target = column_pages if page.gutter else plain_pages
                 target.setdefault(strategy, []).append(page.number)
 
@@ -146,6 +153,7 @@ def check_reading_order(document: Document, weights: dict) -> list[Finding]:
                 check="2.3",
                 severity="warning" if affected else "info",
                 title="Multi-column layout" + (" scrambles the reading order" if affected else ""),
+                code="columns_scramble" if affected else "columns_ok",
                 detail=(
                     f"Readers using {names(affected)} mix the columns, so text from one section "
                     "ends up inside another."
@@ -164,6 +172,7 @@ def check_reading_order(document: Document, weights: dict) -> list[Finding]:
                 check="2.4",
                 severity="warning",
                 title="Reading order differs between readers",
+                code="order_differs",
                 detail=f"Readers using {names(affected)} put the text in a different order than it "
                 "appears on the page.",
                 fix="Check the raw text with --raw; layouts built from floating text boxes often cause this.",
@@ -177,6 +186,7 @@ def check_reading_order(document: Document, weights: dict) -> list[Finding]:
                 check="2.4",
                 severity="warning",
                 title="A reader could not open the file",
+                code="reader_failed",
                 detail=f"Readers using {names(sorted(failed))} failed on this PDF.",
                 fix="Re-export the PDF from the original editor.",
                 strategies=tuple(sorted(failed)),
@@ -197,6 +207,7 @@ def check_reading_order(document: Document, weights: dict) -> list[Finding]:
                     check="2.4",
                     severity="warning",
                     title="Words broken or lost",
+                    code="words_broken",
                     detail=f"Readers using {names([strategy])} do not see these words as written, "
                     "usually because a letter is split off (for example a Turkish İ drawn from a "
                     "separate font). A recruiter searching for them will not find this resume.",
@@ -206,6 +217,22 @@ def check_reading_order(document: Document, weights: dict) -> list[Finding]:
                 )
             )
     return findings
+
+
+def mixes_columns(page, text: str) -> bool:
+    """True when a reading puts text from both sides of the gutter on one output line."""
+    center = page.gutter.center
+    rows: dict[int, tuple[list[str], list[str]]] = {}
+    for line in page.lines:
+        if line.bbox[2] <= center:
+            rows.setdefault(line.row, ([], []))[0].append(fold(line.text))
+        elif line.bbox[0] >= center:
+            rows.setdefault(line.row, ([], []))[1].append(fold(line.text))
+    output = [fold(line) for line in text.splitlines()]
+    return any(
+        left and right and any(l in out and r in out for out in output for l in left for r in right)
+        for left, right in rows.values()
+    )
 
 
 # 2.5 ---------------------------------------------------------------------------------------------
@@ -224,6 +251,7 @@ def check_outside_body(document: Document, weights: dict) -> list[Finding]:
                 check="2.5",
                 severity="warning",
                 title="Contact details only in the header or footer",
+                code="contact_in_header",
                 detail="Word stores headers and footers apart from the body. Readers that take only "
                 "the body paragraphs never see your email or phone number.",
                 fix="Move your contact details into the first lines of the body.",
@@ -238,6 +266,7 @@ def check_outside_body(document: Document, weights: dict) -> list[Finding]:
                 check="2.5",
                 severity="warning",
                 title="Text inside text boxes",
+                code="text_boxes",
                 detail="Text boxes are stored inside drawings. Readers that take only the body "
                 "paragraphs skip them.",
                 fix="Replace text boxes with normal paragraphs.",
@@ -318,6 +347,8 @@ def check_sections(document: Document, weights: dict) -> tuple[dict[str, Line], 
                 check="2.6",
                 severity="warning",
                 title="Section heading not recognized",
+                code="heading_unknown",
+                params={"suggestions": {line.text: heading_label(closest) for line, closest in unknown[:5]}},
                 detail="These lines look like section headings but are not standard names, so a "
                 "parser may not know which field to fill with what follows.",
                 fix="Use standard headings: " + ", ".join(
@@ -334,6 +365,7 @@ def check_sections(document: Document, weights: dict) -> tuple[dict[str, Line], 
                 check="2.6",
                 severity="warning",
                 title="Standard section not found",
+                code="section_missing",
                 detail="No heading was recognized for: " + ", ".join(heading_label(n) for n in missing)
                 + ". Parsers fill these fields from the text under such headings.",
                 fix="Add the section with a standard heading.",
@@ -358,6 +390,7 @@ def check_sections(document: Document, weights: dict) -> tuple[dict[str, Line], 
                 check="2.6",
                 severity="warning",
                 title="Section headings run into other text",
+                code="heading_merged",
                 detail=f"Readers using {names(merged)} put these headings on a line together with "
                 "other text, so they may not be recognized as headings.",
                 fix="Give each heading its own full-width line.",
@@ -399,6 +432,7 @@ def check_fields(document: Document, weights: dict) -> tuple[dict[str, str], lis
                 check="2.7",
                 severity="critical",
                 title="No email address found",
+                code="no_email",
                 detail="No reader finds an email address, so an ATS cannot fill in how to contact you.",
                 fix="Write your email address as plain text near the top.",
                 strategies=tuple(readings),
@@ -411,6 +445,7 @@ def check_fields(document: Document, weights: dict) -> tuple[dict[str, str], lis
                 check="2.7",
                 severity="info",
                 title="LinkedIn address is only a hidden link",
+                code="linkedin_hidden",
                 detail="Your LinkedIn URL is attached to other text as a link. Text extraction reads "
                 "the visible text, not the link target, so the URL itself is not in the parsed resume.",
                 fix="Write the address as text, e.g. linkedin.com/in/your-name.",
@@ -425,6 +460,7 @@ def check_fields(document: Document, weights: dict) -> tuple[dict[str, str], lis
                 check="2.7",
                 severity="warning",
                 title="Dates that cannot be parsed",
+                code="vague_dates",
                 detail="Dates written with a season or quarter cannot be turned into a month, so the "
                 "ATS cannot compute how long you held a position.",
                 fix='Use "MM/YYYY" or "Mon YYYY", e.g. "06/2021 – 09/2021".',
@@ -487,6 +523,8 @@ def check_bullets(document: Document, weights: dict) -> list[Finding]:
             check="2.8",
             severity="warning",
             title="Bullets end up in the wrong place",
+            code="bullets_misplaced",
+            params={"counts": dict(affected), "total": len(bullet_lines), "tiny": bool(tiny)},
             detail="; ".join(f"{names([s])}: {n} of {len(bullet_lines)} bullets misplaced" for s, n in affected)
             + ". Items then appear to start in the middle of the previous one." + cause,
             fix="Use the editor's normal bullet list, or export the PDF with another tool.",

@@ -1,27 +1,28 @@
 """PDF reader: pdfplumber for words, fonts and raw text; pypdf as a second reader (ALGORITHM.md §2.0)."""
 
 import re
-from pathlib import Path
+from io import BytesIO
 from statistics import median
 
 import pdfplumber
 from pypdf import PdfReader
 
 from resume_xray.config import load_weights
-from resume_xray.layout import column_order, find_gutter
+from resume_xray.layout import column_order, find_gutter, reading_order
 from resume_xray.models import Document, Line, Page, Word
 
 BOLD_FONT = re.compile(r"bold|black|heavy|semibold|demi", re.IGNORECASE)
 
 
-def read_pdf(path: Path) -> Document:
+def read_pdf(source: BytesIO, name: str) -> Document:
     weights = load_weights()
     row_overlap = weights["reader"]["row_overlap_min"]
     split_gap = weights["parseability"]["gutter_min_width_pt"]
-    alt_texts = _read_with_pypdf(path)
+    alt_texts = _read_with_pypdf(source)
+    source.seek(0)
 
     pages = []
-    with pdfplumber.open(path) as pdf:
+    with pdfplumber.open(source) as pdf:
         for index, page in enumerate(pdf.pages):
             number = index + 1
             # Font details are taken per character rather than via extra_attrs, which would split a
@@ -40,6 +41,8 @@ def read_pdf(path: Path) -> Document:
             ]
             lines = group_lines(words, number, row_overlap, split_gap)
             gutter = find_gutter(lines, float(page.width), weights["parseability"])
+            # Keep lines in column-aware reading order, so sections follow their own column.
+            lines = [line for row in reading_order(lines, gutter) for line in row]
             pages.append(
                 Page(
                     number=number,
@@ -57,7 +60,7 @@ def read_pdf(path: Path) -> Document:
                     links=[link["uri"] for link in page.hyperlinks if link.get("uri")],
                 )
             )
-    return Document(name=path.name, kind="pdf", pages=pages)
+    return Document(name=name, kind="pdf", pages=pages)
 
 
 def group_lines(words: list[Word], page: int, row_overlap: float, split_gap: float) -> list[Line]:
@@ -112,10 +115,10 @@ def _make_line(words: list[Word], page: int, row: int) -> Line:
     )
 
 
-def _read_with_pypdf(path: Path) -> list[str | None]:
+def _read_with_pypdf(source: BytesIO) -> list[str | None]:
     """Page texts from pypdf; a page that pypdf cannot read gives None instead of failing."""
     try:
-        reader = PdfReader(path)
+        reader = PdfReader(source)
     except Exception:
         return []
     texts: list[str | None] = []

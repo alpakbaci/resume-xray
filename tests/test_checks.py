@@ -155,3 +155,14 @@ def test_fold_matches_across_languages_and_case():
     assert fold("DENEYİM") == fold("Deneyim") == "deneyim"
     assert fold("EXPERIENCE") == fold("Experience")
     assert fold("Eğitim:") == "egitim"
+
+
+def test_narrow_second_column_glued_to_lines_is_caught(tmp_path):
+    # One short skill per row: word order barely changes, but position order glues each skill to
+    # the end of an experience line.
+    left = [Text(50, 130 + 16 * i, f"Experience line number {i} about delivering products") for i in range(8)]
+    right = [Text(380, 130 + 16 * i, skill) for i, skill in enumerate(["Jira", "Figma", "SQL", "Agile", "Scrum", "Excel", "Git", "Python"])]
+    report = report_for(tmp_path, [[Text(50, 50, "Jane Doe", size=20, bold=True), CONTACT, *left, *right]])
+
+    finding = next(f for f in report.findings if f.check == "2.3")
+    assert finding.code == "columns_scramble" and "position" in finding.strategies

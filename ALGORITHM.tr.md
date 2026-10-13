@@ -167,9 +167,14 @@ kapsama(x) = kutusu dilimi kesen satır sayısı / toplam satır sayısı
 olan en geniş kesintisiz şerittir; ancak solundaki ve sağındaki satırların her biri sayfanın metin
 yüksekliğinin en az %50'sini kaplamalıdır.
 
-Kanalı olan bir sayfada içerik akışı ve konum okumaları sütun farkındalıklı okumayla karşılaştırılır
-(2.4'teki gibi). Bulgu, sütunları karıştıran stratejileri belirten bir **uyarı**, hiçbiri
-karıştırmıyorsa **bilgi** olur.
+Kanalı olan bir sayfada bir okuma, kelime sırası sütun farkındalıklı okumadan farklıysa (2.4'teki
+gibi) ya da aynı sıradaki sol ve sağ sütunun metnini tek bir çıktı satırına koyuyorsa **sütunları
+karıştırır**. Bulgu, sütunları karıştıran stratejileri belirten bir **uyarı**, hiçbiri karıştırmıyorsa
+**bilgi** olur.
+
+*Test sırasında bulundu:* dar bir sağ sütunda (her satırda bir yetenek), konum sırası her yeteneği
+bir deneyim satırının sonuna yapıştırdı, ama kelime sırasının %85'ini korudu; tek satır testi bu
+durumu yakalar.
 
 *Gerekçe:* Sütun arası boşluk genellikle 15 puntodan geniş, kelime arası boşluk 3–5 puntodur. %50
 yükseklik şartı, yalnızca başlık alanında yan yana öğeler bulunan tek sütunlu sayfaların yanlış

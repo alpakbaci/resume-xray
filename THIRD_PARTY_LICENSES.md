@@ -45,7 +45,15 @@ Versions below were checked from installed package metadata on 2026-10-14.
 `opentelemetry-api` is only the tracing interface. Without an OpenTelemetry SDK and exporter
 installed and configured, it does nothing and sends no data. resume-xray installs neither.
 
+## Fonts (shipped in `resume_xray/web/static/fonts/`)
+
+| Font | Version | License | Source |
+|---|---|---|---|
+| Inter (variable, Latin and Latin Extended subsets) | 4.x via @fontsource-variable/inter 5.2.8 | SIL Open Font License 1.1 (`Inter-OFL.txt`) | https://github.com/rsms/inter |
+| JetBrains Mono (400, Latin and Latin Extended subsets) | via @fontsource/jetbrains-mono 5.2.8 | SIL Open Font License 1.1 (`JetBrainsMono-OFL.txt`) | https://github.com/JetBrains/JetBrainsMono |
+
 ## Development only (not shipped to users)
 
 pytest (MIT), with iniconfig (MIT), pluggy (MIT), packaging (Apache-2.0 OR BSD-2-Clause),
-Pygments (BSD-2-Clause).
+Pygments (BSD-2-Clause); httpx2 (BSD-3-Clause) for the web tests, with httpcore2
+(BSD-3-Clause) and truststore (MIT).

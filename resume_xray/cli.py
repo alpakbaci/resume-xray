@@ -37,6 +37,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skills", metavar="TERMS", help="look only for these terms, without a job description, comma-separated")
     parser.add_argument("--raw", action="store_true", help="show the text each reading strategy extracts")
     parser.add_argument("--json", action="store_true", help="print the report as JSON")
+    parser.add_argument("--port", type=int, default=8765, help="port for the web interface (default 8765)")
+    parser.add_argument("--no-browser", action="store_true", help="start the web interface without opening a browser")
     return parser
 
 
@@ -44,8 +46,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if not args.resume:
-        parser.print_help()
-        return 0
+        return serve(args.port, open_browser=not args.no_browser)
     try:
         document = read_document(args.resume)
     except (UnsupportedFormat, FileNotFoundError) as error:
@@ -103,6 +104,30 @@ def format_report(report: Report) -> str:
     out.append("Contact found: " + (", ".join(report.fields.values()) or "none"))
     out.append("\nSee what each ATS reading strategy extracts: resume-xray FILE --raw")
     return "\n".join(out)
+
+
+def serve(port: int, open_browser: bool) -> int:
+    """Run the web interface on this computer only (127.0.0.1)."""
+    import socket
+    import threading
+    import webbrowser
+
+    import uvicorn
+
+    from resume_xray.web.app import app
+
+    for candidate in range(port, port + 20):
+        with socket.socket() as probe:
+            if probe.connect_ex(("127.0.0.1", candidate)) != 0:
+                port = candidate
+                break
+    url = f"http://127.0.0.1:{port}"
+    print(f"resume-xray is running at {url}")
+    print("Your files stay on this computer. Press Ctrl+C to stop.")
+    if open_browser:
+        threading.Timer(1.0, webbrowser.open, args=(url,)).start()
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
+    return 0
 
 
 def split_terms(value: str | None) -> list[str]:
