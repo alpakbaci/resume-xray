@@ -1,244 +1,251 @@
-# Algoritma
+# Algorithm
 
-Bu belge, ats-checker'ın bir CV'yi nasıl analiz ettiğini, hangi hesapları neden yaptığını ve
-kullandığı her eşik ile ağırlığın gerekçesini anlatır. Koddaki tüm sabitler
-`config/weights.toml` dosyasında bu belgedeki adlarıyla tutulur.
+[Türkçe](ALGORITHM.tr.md)
 
-> **Durum:** Aşağıdaki değerler gerekçeli **başlangıç değerleridir**. Test setiyle
-> kalibre edildikçe güncellenecek ve her değişiklik bu belgeye işlenecektir
-> (bkz. [Kalibrasyon](#5-kalibrasyon)).
+This document explains how ats-checker analyzes a resume, why each computation is done, and the
+justification for every threshold and weight it uses. All constants in the code live in
+`ats_checker/config/weights.toml` under the names used in this document.
+
+> **Status:** The values below are justified **starting values**. They will be updated as they
+> are calibrated against the test set, and every change will be recorded here
+> (see [Calibration](#5-calibration)).
 
 ---
 
-## 1. Ne ölçüyoruz, ne ölçmüyoruz?
+## 1. What we measure, and what we don't
 
-Ticari ATS'lerde (Workday, Greenhouse, Taleo, Lever…) bir başvurunun gözden kaçmasının üç
-gerçek nedeni vardır:
+In commercial ATSs (Workday, Greenhouse, Taleo, Lever…) there are three real reasons an
+application goes unseen:
 
-1. **Ayrıştırma hatası:** Belge metne çevrilirken bölümler kaybolur veya karışır.
-2. **Aramada çıkmama:** İşe alımcı yetenek veya pozisyon adıyla arama yapar; CV'de o terim
-   yoksa başvuru sonuçlarda görünmez.
-3. **Eleme soruları:** Çalışma izni, deneyim yılı gibi formdaki sorular (CV metniyle ilgisi yoktur).
+1. **Parsing failure:** sections get lost or scrambled when the document is converted to text.
+2. **Not showing up in search:** recruiters search by skill or job title; if the term is not in
+   the resume, the application never appears in the results.
+3. **Knockout questions:** questions on the application form such as work authorization or
+   years of experience (unrelated to the resume text).
 
-ats-checker **1. ve 2. maddeyi** ölçer. Ölçmediği şeyler:
+ats-checker measures **points 1 and 2**. It does not measure:
 
-- İşe alınıp alınmayacağınızı veya "ATS'nin vereceği puanı". Hiçbir ATS üreticisi böyle bir
-  puan yayınlamaz; bunu taklit ettiğini söyleyen bir araç tahmin yürütüyordur.
-- "CV'lerin %75'i ATS tarafından reddedilir" iddiası bir **mittir**. Kaynağı 2012'de kapanmış bir
-  CV optimizasyon şirketinin (Preptel) satış sunumudur ve yöntemi hiç yayınlanmamıştır.
+- Whether you will be hired, or "the score an ATS would give you". No ATS vendor publishes such a
+  score; a tool claiming to reproduce one is guessing.
+- The claim that "75% of resumes are rejected by ATS" is a **myth**. It traces back to a 2012 sales
+  pitch by Preptel, a resume-optimization company that shut down in 2013, and no methodology was
+  ever published.
 
-### Tek puan yok
+### No single score
 
-Sonuç tek bir "%73 uyumlu" sayısı olarak verilmez. Birbiriyle ilgisiz bulguları (font hatası,
-eksik yetenek, sütun düzeni) keyfi ağırlıklarla toplamak hem gerekçelendirilemez hem de kritik
-hataları ortalamada gizler. Bunun yerine iki ayrı soru cevaplanır:
+Results are not given as a single "73% match" number. Adding unrelated findings (a font problem,
+a missing skill, a column layout) with arbitrary weights cannot be justified and hides critical
+failures inside an average. Instead, two separate questions are answered:
 
-| Soru | Cevap biçimi | Kural |
+| Question | Answer format | Rule |
 |---|---|---|
-| Belgem taranabiliyor mu? | `Uygun` / `Riskli` / `Okunamaz` | En kötü bulgu belirler |
-| İlana göre aranabilir miyim? | Zorunlu ve tercih edilen terimler için ayrı kapsama oranı | Ağırlıklı kapsama (bölüm 3) |
+| Can my document be parsed? | `OK` / `Risky` / `Unreadable` | The worst finding wins |
+| Will I be found for this job? | Separate coverage for required and preferred terms | Weighted coverage (section 3) |
 
 ---
 
-## 2. Taranabilirlik
+## 2. Parseability
 
-Her kontrol bir **şiddet** üretir: `kritik`, `uyarı` veya `bilgi`. Ağırlık yoktur; eşikler vardır.
+Each check produces a **severity**: `critical`, `warning` or `info`. There are no weights, only
+thresholds.
 
-- Herhangi bir `kritik` bulgu → **Okunamaz**
-- `kritik` yok, en az bir `uyarı` → **Riskli**
-- Diğer durumlar → **Uygun**
+- Any `critical` finding → **Unreadable**
+- No `critical`, at least one `warning` → **Risky**
+- Otherwise → **OK**
 
-### 2.1 Metin katmanı (`min_chars_per_page = 50`)
+### 2.1 Text layer (`min_chars_per_page = 50`)
 
-Her sayfadan çıkarılan karakter sayısı `n_c` hesaplanır. `n_c < 50` ise sayfa taranmış bir
-görüntüdür → **kritik**.
+The number of characters extracted from each page, `n_c`, is computed. If `n_c < 50`, the page is
+a scanned image → **critical**.
 
-*Gerekçe:* Tipik bir CV sayfası 1.500–3.000 karakter içerir. 50'nin altı, yalnızca sayfa numarası
-gibi kırıntıların çıkarılabildiği anlamına gelir.
+*Justification:* A typical resume page contains 1,500–3,000 characters. Below 50 means only
+fragments such as a page number could be extracted.
 
-### 2.2 Bozuk karakter oranı (`garbled_warn = 0.02`, `garbled_critical = 0.10`)
-
-```
-g = bozuk_karakter_sayısı / toplam_karakter_sayısı
-```
-
-Bozuk sayılanlar: `(cid:NN)` kalıpları (ToUnicode eşlemesi olmayan fontlar), `U+FFFD` (�) ve
-Unicode özel kullanım alanı `U+E000–U+F8FF` (ikon fontları).
-
-- `g > 0.02` → **uyarı**, `g > 0.10` → **kritik**
-
-*Gerekçe:* %2'ye kadarı ikon ve madde işaretlerinden gelebilir ve okunabilirliği bozmaz. %10'un
-üstünde kelimeler okunamaz hale gelir.
-
-### 2.3 Çok sütun tespiti (`gutter_min_width_pt = 15`, `gutter_max_coverage = 0.05`, `gutter_min_height = 0.5`, `gutter_x_range = [0.2, 0.8]`)
-
-Sayfa genişliği 1 puntoluk dilimlere bölünür. Her dilim için:
+### 2.2 Garbled character ratio (`garbled_warn = 0.02`, `garbled_critical = 0.10`)
 
 ```
-kapsama(x) = o dilimi bir kelime kutusuyla kesen satır sayısı / toplam satır sayısı
+g = garbled_characters / total_characters
 ```
 
-Sayfa genişliğinin %20–%80 aralığında, en az 15 punto genişliğinde, `kapsama(x) ≤ 0.05` olan
-kesintisiz bir kanal varsa **ve** bu kanal metin yüksekliğinin en az %50'si boyunca sürüyorsa
-sayfa **çok sütunlu** kabul edilir → **uyarı**.
+Counted as garbled: `(cid:NN)` patterns (fonts without a ToUnicode map), `U+FFFD` (�) and the
+Unicode private use area `U+E000–U+F8FF` (icon fonts).
 
-*Gerekçe:* Sütun arası boşluk genellikle 15 puntodan geniş, kelime arası boşluk 3–5 puntodur.
-%50 yükseklik şartı, yalnızca başlık alanında yan yana öğeler bulunan tek sütunlu sayfaların
-yanlış işaretlenmesini önler. Sonuç **kritik değil**, çünkü modern ticari ayrıştırıcılar
-(ör. Textkernel) sütunları çoğunlukla çözebilir; eski ve kurum içi sistemler ise çözemeyebilir.
-Bu yöntem Textkernel'in ilk dönem kural tabanlı sütun tespitine benzer.
+- `g > 0.02` → **warning**, `g > 0.10` → **critical**
 
-### 2.4 İki okuyucunun uyuşması (`agreement_bag_min = 0.9`, `agreement_order_max = 0.7`)
+*Justification:* Up to 2% can come from icons and bullet glyphs without hurting readability.
+Above 10%, words become unreadable.
 
-PDF hem `pdfplumber` hem `pypdf` ile okunur ve kelime dizileri karşılaştırılır:
+### 2.3 Multi-column detection (`gutter_min_width_pt = 15`, `gutter_max_coverage = 0.05`, `gutter_min_height = 0.5`, `gutter_x_range = [0.2, 0.8]`)
+
+The page width is split into 1-point slices. For each slice:
 
 ```
-kelime_benzerliği = |A ∩ B| / |A ∪ B|            (Jaccard, kelime kümeleri)
-sıra_benzerliği   = SequenceMatcher(A, B).ratio() (kelime dizileri)
+coverage(x) = lines with a word box crossing the slice / total lines
 ```
 
-`kelime_benzerliği > 0.9` **ve** `sıra_benzerliği < 0.7` ise → **uyarı**: "okuma sırası belirsiz".
+If, between 20% and 80% of the page width, there is a continuous channel at least 15 points wide
+with `coverage(x) ≤ 0.05`, **and** that channel runs for at least 50% of the text height, the page
+is considered **multi-column** → **warning**.
 
-*Gerekçe:* Farklı ATS'ler farklı PDF okuyucuları kullanır. İki okuyucu aynı kelimeleri farklı
-sırada çıkarıyorsa, belgenin bazı sistemlerde karışık okunma olasılığı yüksektir. Bu kontrol
-2.3'ü destekleyen bağımsız bir sinyaldir.
+*Justification:* The gap between columns is usually wider than 15 points, while the gap between
+words is 3–5 points. The 50% height condition avoids flagging single-column pages that only have
+side-by-side items in the header. The result is **not critical**, because modern commercial
+parsers (e.g. Textkernel) usually handle columns; older and in-house systems may not. This method
+resembles Textkernel's early rule-based column detection.
 
-### 2.5 Üst/alt bilgide iletişim (`header_footer_band = 0.08`)
+### 2.4 Reader agreement (`agreement_bag_min = 0.9`, `agreement_order_max = 0.7`)
 
-- PDF: sayfa yüksekliğinin üst ve alt %8'lik bandı.
-- DOCX: belgenin header/footer bölümleri (dosyada gövdeden ayrı saklanır).
+The PDF is read with both `pdfplumber` and `pypdf`, and the word sequences are compared:
 
-E-posta veya telefon **yalnızca** bu alanlarda bulunuyorsa → **uyarı**.
+```
+bag_similarity   = |A ∩ B| / |A ∪ B|              (Jaccard, word sets)
+order_similarity = SequenceMatcher(A, B).ratio()  (word sequences)
+```
 
-*Gerekçe:* Bazı ayrıştırıcılar ve kütüphaneler (ör. mammoth, basit python-docx kullanımı) üst ve
-alt bilgiyi atlar. Düzeltmesi kolay, riski gerçek.
+If `bag_similarity > 0.9` **and** `order_similarity < 0.7` → **warning**: "reading order is
+ambiguous".
 
-### 2.6 Bölüm tespiti (`heading_max_words = 4`, `heading_size_ratio = 1.15`, `heading_match_min = 85`)
+*Justification:* Different ATSs use different PDF readers. If two readers extract the same words
+in a different order, the document is likely to be read scrambled by some systems. This is an
+independent signal supporting 2.3.
 
-Bir satır şu koşulları sağlıyorsa **başlık adayıdır**:
+### 2.5 Contact info in header/footer (`header_footer_band = 0.08`)
 
-- en fazla 4 kelime, **ve**
-- şunlardan biri: font boyutu ≥ gövde medyanı × 1.15, kalın yazı veya tamamı büyük harf.
+- PDF: the top and bottom 8% band of the page height.
+- DOCX: the document's header/footer parts (stored separately from the body in the file).
 
-Aday, Türkçe/İngilizce başlık sözlüğüyle karşılaştırılır (`rapidfuzz.fuzz.ratio ≥ 85`).
+If the email or phone number is found **only** in these areas → **warning**.
 
-- Temel bölümlerden (deneyim, eğitim, yetenekler) biri bulunamazsa → **kritik**
-- Sözlükte karşılığı olmayan başlık adayı → **uyarı** ve en yakın standart başlık önerisi
-  (ör. "Projelerim" → "Projeler")
+*Justification:* Some parsers and libraries (e.g. mammoth, naive python-docx usage) skip headers
+and footers. The fix is easy and the risk is real.
 
-*Gerekçe:* Ayrıştırıcılar bölümleri başlık sözlükleriyle sınıflandırır. 85 eşiği yazım
-farklarını ("Experiences", "Is Deneyimi") yakalarken alakasız kelimeleri dışarıda bırakır.
+### 2.6 Section detection (`heading_max_words = 4`, `heading_size_ratio = 1.15`, `heading_match_min = 85`)
 
-### 2.7 Alan çıkarma
+A line is a **heading candidate** if:
 
-Düzenli ifadelerle (regex) şunlar aranır: e-posta, telefon (TR ve uluslararası biçimler),
-LinkedIn adresi ve tarih aralıkları (`MM/YYYY`, `Oca 2021`, `Jan 2021`, `2019–2021`,
-"Günümüz" / "Present").
+- it has at most 4 words, **and**
+- one of: font size ≥ body median × 1.15, bold, or all caps.
 
-- E-posta hiç yok → **kritik**
-- Bir deneyim kaydının tarihi ayrıştırılamıyor (ör. "Yaz 2021") → **uyarı**
+The candidate is compared against an English/Turkish heading dictionary
+(`rapidfuzz.fuzz.ratio ≥ 85`).
+
+- One of the core sections (experience, education, skills) is not found → **critical**
+- A heading candidate with no match in the dictionary → **warning**, with the closest standard
+  heading suggested (e.g. "My Projects" → "Projects")
+
+*Justification:* Parsers classify sections using heading dictionaries. A threshold of 85 catches
+spelling variants ("Experiences", "Is Deneyimi") while leaving unrelated words out.
+
+### 2.7 Field extraction
+
+Regular expressions look for: email, phone (Turkish and international formats), LinkedIn URL and
+date ranges (`MM/YYYY`, `Jan 2021`, `Oca 2021`, `2019–2021`, "Present" / "Günümüz").
+
+- No email at all → **critical**
+- The date of an experience entry cannot be parsed (e.g. "Summer 2021") → **warning**
 
 ---
 
-## 3. İlan kapsaması
+## 3. Job match
 
-### 3.1 Normalleştirme (CV ve ilan için aynı)
+### 3.1 Normalization (same for resume and job description)
 
-1. Unicode NFKC dönüşümü.
-2. **Türkçe uyumlu küçük harf:** `I → ı`, `İ → i`. Python'un `str.lower()` fonksiyonu Türkçede
-   yanlış sonuç verir; bu, Türkçe metinlerde en sık görülen eşleşme hatasıdır.
-3. `+`, `#` ve `.` korunur; aksi halde `C++`, `C#`, `.NET` kaybolur.
-4. Snowball ile kök bulma (dil, stopword sayımıyla tespit edilir): "Python'da" → "python".
+1. Unicode NFKC normalization.
+2. **Turkish-aware lowercasing:** `I → ı`, `İ → i`. Python's `str.lower()` gives wrong results for
+   Turkish; this is the most common matching bug on Turkish text.
+3. `+`, `#` and `.` are kept; otherwise `C++`, `C#`, `.NET` are lost.
+4. Snowball stemming (language detected by counting stopwords): "Python'da" → "python".
 
-### 3.2 İlandan terim çıkarma
+### 3.2 Term extraction from the job description
 
-- **Yetenek sözlüğü:** 1–3 kelimelik eşleşmeler. Sözlük eş anlamlıları içerir
-  (`k8s → kubernetes`, `js → javascript`). Başlangıçta elle hazırlanmış bir teknoloji listesi;
-  sonraki aşamada ESCO (Türkçe dahil 28 dil) eklenecek.
-- **Teknik görünümlü kelimeler:** Rakam, `+`, `#` içeren veya CamelCase yazılan kelimeler aday
-  terim olarak alınır.
+- **Skill dictionary:** matches of 1–3 words. The dictionary contains synonyms
+  (`k8s → kubernetes`, `js → javascript`). It starts as a hand-curated technology list; ESCO
+  (28 languages including Turkish) will be added later.
+- **Technical-looking words:** words containing digits, `+`, `#`, or written in CamelCase are taken
+  as candidate terms.
 
-### 3.3 Terim ağırlığı (`required_weight = 1.0`, `preferred_weight = 0.5`)
+### 3.3 Term weight (`required_weight = 1.0`, `preferred_weight = 0.5`)
 
 ```
 w_t = r_t × (1 + ln(1 + f_t))
 ```
 
-**`r_t` — gereklilik katsayısı**
+**`r_t` — requirement factor**
 
-| Terimin geçtiği ilan bölümü | `r_t` |
+| Job description section the term appears in | `r_t` |
 |---|---|
-| "Aranan nitelikler", "Requirements", "Must have" | 1.0 |
-| "Tercih sebebi", "Nice to have", "Artı" | 0.5 |
-| Belirsiz | 1.0 |
+| "Requirements", "Must have", "Aranan nitelikler" | 1.0 |
+| "Nice to have", "Preferred", "Tercih sebebi" | 0.5 |
+| Unclear | 1.0 |
 
-*Gerekçe:* İlanı yazanın kendi zorunlu/tercihli ayrımına güvenilir. 0.5, "tercih edilen bir
-terim, zorunlu bir terimin yarısı kadar önemlidir" varsayımının en sade halidir. Belirsiz
-bölümler, eksikliği gözden kaçırmamak için zorunlu sayılır.
+*Justification:* We trust the job author's own required/preferred split. 0.5 is the simplest form
+of the assumption "a preferred term is half as important as a required one". Unclear sections are
+treated as required so that gaps are not missed.
 
-**`f_t` — terimin ilanda geçme sayısı**
+**`f_t` — number of times the term appears in the job description**
 
-*Gerekçe:* Bir terim ilanda ne kadar sık geçiyorsa o kadar önemlidir, ancak etkisi logaritmayla
-**doyurulur**: 1 kez geçen terim ×1.69, 5 kez geçen ×2.79 ağırlık alır (5 kat değil). Bu, BM25'teki
-terim sıklığı doygunluğuyla aynı fikirdir ve ilanda 10 kez tekrarlanan tek bir kelimenin diğer
-tüm terimleri ezmesini önler.
+*Justification:* The more often a term appears, the more important it is, but the effect is
+**saturated** with a logarithm: a term appearing once gets ×1.69 weight, one appearing 5 times gets
+×2.79 (not 5×). This is the same idea as term-frequency saturation in BM25, and it keeps a single
+word repeated 10 times from overwhelming all other terms.
 
-### 3.4 Eşleşme seviyesi (`synonym_match = 0.5`)
+### 3.4 Match level (`synonym_match = 0.5`)
 
-| Durum | `m_t` | Gerekçe |
+| Case | `m_t` | Justification |
 |---|---|---|
-| Normalleştirme sonrası tam eşleşme | 1.0 | İşe alımcı ilandaki kelimeyle aradığında bulur |
-| Yalnızca eş anlamlı var (ilan "Kubernetes", CV "k8s") | 0.5 | Anlam aynı, ama ATS araması kelime bazlıdır ve bulamayabilir. Kullanıcıya "ilandaki yazımı da ekleyin" önerilir |
-| Yok | 0 | — |
+| Exact match after normalization | 1.0 | A recruiter searching with the job's wording finds it |
+| Only a synonym is present (job says "Kubernetes", resume says "k8s") | 0.5 | Same meaning, but ATS search is word-based and may miss it. The user is told to also add the job's wording |
+| Absent | 0 | — |
 
-### 3.5 Kapsama
+### 3.5 Coverage
 
 ```
-Kapsama = Σ (w_t × m_t) / Σ w_t
+Coverage = Σ (w_t × m_t) / Σ w_t
 ```
 
-Zorunlu ve tercih edilen terimler için **ayrı ayrı** hesaplanır ve gösterilir.
+Computed and shown **separately** for required and preferred terms.
 
-Terimin CV'de nerede geçtiği (deneyim maddesi mi, yalnızca yetenek listesi mi) de raporlanır,
-ancak **kapsamayı etkilemez**. ATS araması iki yerde de bulur; deneyim içinde geçmesinin daha
-değerli olması insan okuyucuya ilişkin bir tavsiyedir.
+Where the term appears in the resume (an experience bullet vs. only the skills list) is also
+reported, but it **does not affect coverage**. ATS search finds it in either place; the fact that
+an in-context mention is more valuable is advice about the human reader.
 
-### 3.6 Ayrı kontroller (kapsamaya karışmaz)
+### 3.6 Separate checks (not part of coverage)
 
-| Kontrol | Yöntem | Neden ayrı |
+| Check | Method | Why separate |
 |---|---|---|
-| Pozisyon başlığı | İlan başlığı ile CV'deki başlıklar: `rapidfuzz.fuzz.token_set_ratio ≥ 85` | İşe alımcıların en çok aradığı alan |
-| Deneyim yılı | İlandaki "5+ yıl" kalıbı; CV'deki tarih aralıkları birleştirilir (çakışan dönemler bir kez sayılır) | Eleme kriteridir, kapsamayla karıştırılmamalı |
-| Diploma | İlandaki "lisans/bachelor" vb. kalıplar eğitim bölümünde aranır | Eleme kriteridir |
+| Job title | Job title vs. titles in the resume: `rapidfuzz.fuzz.token_set_ratio ≥ 85` | The field recruiters search most |
+| Years of experience | "5+ years" pattern in the job; resume date ranges merged (overlapping periods counted once) | A knockout criterion, must not be mixed with coverage |
+| Degree | "bachelor/lisans" etc. patterns searched in the education section | A knockout criterion |
 
 ---
 
-## 4. Neden TF-IDF, embedding veya LLM yok?
+## 4. Why no TF-IDF, embeddings or LLM?
 
-| Yöntem | Neden kullanılmıyor |
+| Method | Why it is not used |
 |---|---|
-| TF-IDF + cosine | IDF anlamlı olmak için çok sayıda belge ister; elimizde 2 belge var. Sonuç "neden?" sorusuna cevap vermez |
-| Embedding (sentence-transformers vb.) | Kara kutu; belgelenmiş isim/cinsiyet önyargısı var (Wilson & Caliskan, AIES 2024); ~1 GB model indirmesi gerekir. ATS araması anlamsal değil, kelime bazlıdır |
-| LLM | Deterministik değil (aynı CV'ye farklı sonuç), CV'nin dışarı gönderilmesi gizlilik riski taşır |
+| TF-IDF + cosine | IDF needs many documents to be meaningful; we have 2. The result cannot answer "why?" |
+| Embeddings (sentence-transformers etc.) | A black box; documented name/gender bias (Wilson & Caliskan, AIES 2024); needs a ~1 GB model download. ATS search is word-based, not semantic |
+| LLM | Not deterministic (different results for the same resume); sending the resume out is a privacy risk |
 
-İleride embedding, yalnızca "şu terim de yakın olabilir" önerisi üreten, **varsayılan olarak
-kapalı** bir seçenek olarak eklenebilir; kapsama hesabına girmez.
+Embeddings may be added later as an **off-by-default** option that only produces "this term may
+also be related" suggestions; they never enter the coverage computation.
 
 ---
 
-## 5. Kalibrasyon
+## 5. Calibration
 
-Eşikler `tests/fixtures/` altındaki etiketli test CV'leriyle doğrulanır. Hedef set (~30 belge):
+Thresholds are validated with labeled test resumes in `tests/fixtures/`. Target set (~30
+documents):
 
-- tek sütunlu, iki sütunlu, tablolu PDF
-- Canva / tasarım aracı çıktıları, ikon fontlu belgeler
-- taranmış (görüntü) PDF
-- metin kutulu, üst bilgide iletişimli DOCX
-- Türkçe ve İngilizce CV'ler
+- single-column, two-column and table-based PDFs
+- Canva / design-tool exports, documents with icon fonts
+- scanned (image) PDFs
+- DOCX files with text boxes and contact info in the header
+- English and Turkish resumes
 
-Her belge için beklenen bulgular elle etiketlenir. Bir eşik değiştirildiğinde test seti yeniden
-çalıştırılır ve sonuç bu belgeye işlenir.
+The expected findings for each document are labeled by hand. Whenever a threshold changes, the
+test set is re-run and the result is recorded here.
 
-| Sürüm | Değişiklik | Test sonucu |
+| Version | Change | Test result |
 |---|---|---|
-| 0.1 | Başlangıç değerleri | — (test seti henüz yok) |
+| 0.1 | Starting values | — (no test set yet) |
