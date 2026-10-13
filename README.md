@@ -38,6 +38,8 @@ pip install -e .
 ```bash
 resume-xray my_resume.pdf                     # can an ATS parse it?
 resume-xray my_resume.pdf --job job.txt       # ... and which job terms are missing
+resume-xray my_resume.pdf --job job.txt --add "Scrum Master, SAP FI" --remove "English"
+resume-xray my_resume.pdf --skills "Python, Docker, risk management"   # your own term list
 resume-xray my_resume.pdf --raw               # the text each ATS reading strategy extracts
 resume-xray my_resume.pdf --json              # machine-readable report
 ```

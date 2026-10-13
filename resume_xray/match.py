@@ -129,6 +129,8 @@ class JobTerm:
     count: int = 0
     # The wordings the job description used, as written.
     wordings: list[str] = field(default_factory=list)
+    # "job" when extracted from the job description, "user" when the user added it.
+    source: Literal["job", "user"] = "job"
 
     @property
     def weight(self) -> float:
@@ -157,7 +159,7 @@ def section_kind(line: str, weights: dict) -> str | None:
     return best_kind if best >= weights["heading_match_min"] else None
 
 
-def parse_job(text: str, title: str | None = None) -> JobDescription:
+def parse_job(text: str, title: str | None = None, add: list[str] = (), remove: list[str] = ()) -> JobDescription:
     weights = load_weights()
     pw, mw = weights["parseability"], weights["match"]
     language = detect_language(text)
@@ -200,7 +202,31 @@ def parse_job(text: str, title: str | None = None) -> JobDescription:
         for i, token in enumerate(tokens):
             if i not in used and TECHNICAL.match(token.original) and token.surface not in STOPWORDS[language]:
                 _add(terms, f"word:{token.surface}", token.original, requirement, token.original)
-    return JobDescription(language, title, list(terms.values()), counted)
+
+    # Terms the user added (§3.2, user terms): always required.
+    for name in (n.strip() for n in add):
+        if not name:
+            continue
+        key = dictionary_key(name) or f"user:{fold(name)}"
+        pattern = analyze(name, language)
+        count = sum(len(find(analyze(line, language), pattern, "stem")) for line, _ in counted)
+        term = terms.get(key)
+        if term is None:
+            term = terms[key] = JobTerm(key, skills()[key][0] if key in skills() else name, 0, max(count, 1))
+        term.requirement = mw["required_weight"]
+        term.source = "user"
+        if name not in term.wordings:
+            term.wordings.append(name)
+
+    removed = {fold(n) for n in remove if n.strip()}
+    kept = [t for t in terms.values() if not ({fold(t.name), *map(fold, t.wordings)} & removed)]
+    return JobDescription(language, title, kept, counted)
+
+
+def dictionary_key(name: str) -> str | None:
+    """The skill whose wordings include `name`, compared after folding."""
+    key = fold(name)
+    return next((k for k, variants in skills().items() if any(fold(v) == key for v in variants)), None)
 
 
 def _add(terms: dict[str, JobTerm], key: str, name: str, requirement: float, wording: str) -> None:
@@ -226,6 +252,7 @@ class TermResult:
     sections: tuple[str, ...] = ()
     # Reading strategies in which the term is not found although it is in the resume.
     lost_in: tuple[str, ...] = ()
+    source: Literal["job", "user"] = "job"
 
 
 @dataclass
@@ -241,10 +268,17 @@ class MatchReport:
     degree_in_resume: str | None = None
 
 
-def match_job(document: Document, job_text: str, sections: dict[str, Line], title: str | None = None) -> MatchReport:
+def match_job(
+    document: Document,
+    job_text: str,
+    sections: dict[str, Line],
+    title: str | None = None,
+    add: list[str] = (),
+    remove: list[str] = (),
+) -> MatchReport:
     weights = load_weights()
     mw = weights["match"]
-    job = parse_job(job_text, title)
+    job = parse_job(job_text, title, add, remove)
     reference = document.reading("columns" if document.kind == "pdf" else "full") or ""
     language = detect_language(reference)
     resume = analyze(reference, language)
@@ -261,6 +295,7 @@ def match_job(document: Document, job_text: str, sections: dict[str, Line], titl
             weight=term.weight,
             level=level,
             job_wording=term.wordings[0],
+            source=term.source,
         )
         if found:
             result.resume_wording = span_text(reference, found)
@@ -281,7 +316,7 @@ def match_job(document: Document, job_text: str, sections: dict[str, Line], titl
         preferred_coverage=_coverage([r for r in results if r.kind == "preferred"], levels),
         terms=sorted(results, key=lambda r: (r.kind != "required", -r.weight, r.name.lower())),
     )
-    report.title_match = _title_match(job.title, document, mw)
+    report.title_match = _title_match(job.title, document, language)
     report.years_required = _years_required(job)
     report.years_in_resume = _years_in_resume(line_sections)
     report.degree_required = _degree(" ".join(line for line, _ in job.lines), lowest=True)
@@ -297,7 +332,7 @@ def _match_term(term: JobTerm, resume: list[Token], language: str) -> tuple[Leve
             hits = find(resume, pattern, by)
             if hits:
                 return level, resume[hits[0] : hits[0] + len(pattern)]
-    if not term.key.startswith("word:"):
+    if term.key in skills():
         for variant in skills()[term.key]:
             pattern = analyze(variant, language)
             for by in ("surface", "stem"):
@@ -328,14 +363,12 @@ def _line_sections(document: Document, sections: dict[str, Line]) -> list[tuple[
 # Separate checks (§3.6) --------------------------------------------------------------------------
 
 
-def _title_match(title: str | None, document: Document, weights: dict) -> str | None:
+def _title_match(title: str | None, document: Document, language: str) -> str | None:
+    """The first resume line containing the job title as an exact phrase, like a quoted search."""
     if not title:
         return None
-    key = fold(title)
-    for line in document.lines:
-        if fuzz.token_set_ratio(key, fold(line.text)) >= weights["title_match_min"]:
-            return line.text
-    return None
+    pattern = analyze(title, language)
+    return next((line.text for line in document.lines if find(analyze(line.text, language), pattern, "surface")), None)
 
 
 YEARS_REQUIRED = re.compile(r"(\d{1,2})\s*\+?\s*(?:years?|yrs?|yil|sene)\b")

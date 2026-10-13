@@ -323,6 +323,18 @@ longer first line is a sentence, not a title.
   CamelCase (`PostgreSQL`, `ISO27001`, `iOS`), or acronyms of two or more capital letters
   (`ARPU`, `LTV`, `AI`).
 
+**User terms.** No dictionary covers every field, so the user has the last word on which terms
+count:
+
+- **Add** (`--add`): each added term is **required**. If it is a wording in the skill dictionary,
+  it brings that skill's synonyms; otherwise it is matched as written. Its `f_t` is the number of
+  times it appears in the job description, at least 1.
+- **Remove** (`--remove`): terms whose name or job wording equals a removed term are dropped.
+- **Only my terms** (`--skills`): no job description; coverage is computed over the given terms.
+
+*Found on a real job description:* a product manager posting yielded 9 terms; "product strategy",
+"monetization", "experimentation" and "stakeholders" were not in the dictionary.
+
 **One-word stems** (`word_form_max_extra = 2`): a one-word wording matches another form of the
 word only if their lengths differ by at most 2 letters. This applies to the job and the resume
 alike.
@@ -381,11 +393,11 @@ For every term found, the report also shows:
   say, the content-stream reading (because a letter was split off, see 2.4) is not found by an ATS
   that reads that way.
 
-### 3.6 Separate checks (not part of coverage, `title_match_min = 85`)
+### 3.6 Separate checks (not part of coverage)
 
 | Check | Method | Why separate |
 |---|---|---|
-| Job title | The job title is found in a resume line when `rapidfuzz.fuzz.token_set_ratio ≥ 85` (all the title's words on one line, small spelling differences allowed) | The field recruiters search most |
+| Job title | Found when one resume line contains the title as an exact phrase (same keys as exact terms), like a quoted phrase search [11]. *Found while testing:* a fuzzy comparison took "Project Manager" for "Product Manager" (87% similar); a recruiter's search would not | The field recruiters search most |
 | Years of experience | The largest "N+ years" / "N yıl" in the counted lines of the job. In the resume, date ranges in the experience section (`MM/YYYY`, `Jan 2021`, `Oca 2021`, `2021`, "Present" / "Günümüz" = today) are merged so that overlapping periods count once. A year without a month starts in January and ends in December | A knockout criterion, must not be mixed with coverage |
 | Degree | Levels Bachelor < Master < PhD, recognized in English and Turkish ("lisans", "yüksek lisans", "doktora", "BSc", "MSc"). The job's requirement is the **lowest** level it mentions ("Bachelor's or Master's" → Bachelor); the resume's is the **highest** level in its education section | A knockout criterion |
 

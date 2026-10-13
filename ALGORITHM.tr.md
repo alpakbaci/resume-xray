@@ -326,6 +326,19 @@ uzun bir ilk satır başlık değil cümledir.
   CamelCase yazılan (`PostgreSQL`, `ISO27001`, `iOS`) ya da en az iki büyük harften oluşan
   kısaltmalar (`ARPU`, `LTV`, `AI`).
 
+**Kullanıcı terimleri.** Hiçbir sözlük her alanı kapsamaz; bu yüzden hangi terimlerin sayılacağına
+son olarak kullanıcı karar verir:
+
+- **Ekle** (`--add`): eklenen her terim **zorunludur**. Yetenek sözlüğündeki bir yazımsa o
+  yeteneğin eş anlamlılarını da getirir; değilse yazıldığı gibi eşleştirilir. `f_t` değeri,
+  ilanda geçme sayısıdır (en az 1).
+- **Çıkar** (`--remove`): adı veya ilandaki yazımı çıkarılan terimle aynı olan terimler atılır.
+- **Yalnızca benim terimlerim** (`--skills`): ilan yoktur; kapsama verilen terimler üzerinden
+  hesaplanır.
+
+*Gerçek bir ilanda bulundu:* bir ürün yöneticisi ilanından 9 terim çıktı; "product strategy",
+"monetization", "experimentation" ve "stakeholders" sözlükte yoktu.
+
 **Tek kelimelik kökler** (`word_form_max_extra = 2`): tek kelimelik bir yazım, kelimenin başka bir
 biçimiyle ancak uzunlukları en fazla 2 harf farklıysa eşleşir. Bu kural ilan ve CV için aynıdır.
 
@@ -383,11 +396,11 @@ Bulunan her terim için rapor ayrıca şunları gösterir:
   okumasında bulunmayan bir terim (bir harf ayrıldığı için, bkz. 2.4), o şekilde okuyan bir ATS'de
   bulunamaz.
 
-### 3.6 Ayrı kontroller (kapsamaya karışmaz, `title_match_min = 85`)
+### 3.6 Ayrı kontroller (kapsamaya karışmaz)
 
 | Kontrol | Yöntem | Neden ayrı |
 |---|---|---|
-| Pozisyon adı | `rapidfuzz.fuzz.token_set_ratio ≥ 85` ise pozisyon adı bir CV satırında bulunmuş sayılır (adın tüm kelimeleri bir satırda, küçük yazım farklarına izin verilerek) | İşe alımcıların en çok aradığı alan |
+| Pozisyon adı | Bir CV satırı pozisyon adını birebir ifade olarak içeriyorsa bulunmuş sayılır (tam terimlerle aynı anahtarlar), tırnaklı bir ifade araması gibi [11]. *Test sırasında bulundu:* bulanık karşılaştırma "Project Manager"ı "Product Manager" sanmıştı (%87 benzer); işe alımcının araması bulmazdı | İşe alımcıların en çok aradığı alan |
 | Deneyim yılı | İlanın sayılan satırlarındaki en büyük "N+ years" / "N yıl". CV'de deneyim bölümündeki tarih aralıkları (`MM/YYYY`, `Jan 2021`, `Oca 2021`, `2021`, "Present" / "Günümüz" = bugün), çakışan dönemler bir kez sayılacak şekilde birleştirilir. Ayı olmayan bir yıl ocakta başlar, aralıkta biter | Eleme kriteridir, kapsamayla karıştırılmamalı |
 | Diploma | Lisans < Yüksek lisans < Doktora seviyeleri İngilizce ve Türkçe tanınır ("lisans", "yüksek lisans", "doktora", "BSc", "MSc"). İlanın şartı andığı **en düşük** seviyedir ("Bachelor's or Master's" → Lisans); CV'ninki eğitim bölümündeki **en yüksek** seviyedir | Eleme kriteridir |
 

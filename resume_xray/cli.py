@@ -32,6 +32,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("resume", nargs="?", help="resume file (.pdf or .docx)")
     parser.add_argument("--job", metavar="FILE", help="job description as a text file")
     parser.add_argument("--title", help="job title, if the job description does not start with it")
+    parser.add_argument("--add", metavar="TERMS", help='terms to look for besides those found in the job, comma-separated: "Scrum Master, SAP FI"')
+    parser.add_argument("--remove", metavar="TERMS", help="terms found in the job to ignore, comma-separated")
+    parser.add_argument("--skills", metavar="TERMS", help="look only for these terms, without a job description, comma-separated")
     parser.add_argument("--raw", action="store_true", help="show the text each reading strategy extracts")
     parser.add_argument("--json", action="store_true", help="print the report as JSON")
     return parser
@@ -53,14 +56,17 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     report = run_checks(document)
     match = None
-    if args.job:
-        try:
-            with open(args.job, "rb") as f:
-                job_text = decode_text(f.read())
-        except OSError as error:
-            print(f"resume-xray: {error}", file=sys.stderr)
-            return 2
-        match = match_job(document, job_text, report.section_lines, args.title)
+    if args.job or args.skills:
+        job_text = ""
+        if args.job:
+            try:
+                with open(args.job, "rb") as f:
+                    job_text = decode_text(f.read())
+            except OSError as error:
+                print(f"resume-xray: {error}", file=sys.stderr)
+                return 2
+        add = split_terms(args.add) + split_terms(args.skills)
+        match = match_job(document, job_text, report.section_lines, args.title, add, split_terms(args.remove))
     if args.json:
         data = {**asdict(report), "verdict": report.verdict}
         data.pop("section_lines", None)
@@ -99,11 +105,15 @@ def format_report(report: Report) -> str:
     return "\n".join(out)
 
 
+def split_terms(value: str | None) -> list[str]:
+    return [t.strip() for t in (value or "").split(",") if t.strip()]
+
+
 LEVEL_SYMBOLS = {"exact": "✔", "word_form": "≈", "synonym": "≈", "missing": "✖"}
 
 
 def format_match(match: MatchReport) -> str:
-    out = ["\n" + "─" * 60, f"Job match: {match.job_title or '(untitled job description)'}"]
+    out = ["\n" + "─" * 60, f"Job match: {match.job_title or '(untitled)'}"]
     for kind, coverage in (("required", match.required_coverage), ("preferred", match.preferred_coverage)):
         terms = [t for t in match.terms if t.kind == kind]
         if not terms:
@@ -111,7 +121,7 @@ def format_match(match: MatchReport) -> str:
         found = sum(t.level != "missing" for t in terms)
         out.append(f"\n{kind.capitalize()} terms: {coverage:.0%} covered ({found} of {len(terms)} found)")
         for t in terms:
-            line = f"  {LEVEL_SYMBOLS[t.level]} {t.job_wording}"
+            line = f"  {LEVEL_SYMBOLS[t.level]} {t.job_wording}" + (" (added)" if t.source == "user" else "")
             if t.level == "exact":
                 line += f"  — {', '.join(t.sections)}" if t.sections else ""
             elif t.level == "word_form":
@@ -122,7 +132,11 @@ def format_match(match: MatchReport) -> str:
                 line += f"  (not found in {', '.join(STRATEGY_NAMES[s] for s in t.lost_in)})"
             out.append(line)
     out.append("")
-    if not match.job_title:
+    if not match.job_title and match.years_required is None and match.degree_required is None and all(
+        t.source == "user" for t in match.terms
+    ):
+        pass  # --skills only: no job description to check against
+    elif not match.job_title:
         out.append('Job title: not found in the job description; pass it with --title "..."')
     else:
         out.append(

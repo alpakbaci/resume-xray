@@ -151,3 +151,27 @@ def test_real_job_description_quirks():
     assert {"AI", "ARPU", "LTV"} <= names
     assert parse_job("Senior Backend Developer\nRequirements\nPython\n").title == "Senior Backend Developer"
     assert parse_job("Requirements\nPython\n", title="Data Engineer").title == "Data Engineer"
+
+
+def test_user_terms(tmp_path):
+    document, report = resume(tmp_path, "EXPERIENCE", "Product strategy for k8s platform", "SKILLS", "Python")
+    job = "Requirements\nPython, Terraform and a strong product strategy\n"
+
+    match = match_job(document, job, report.section_lines, add=["product strategy", "Kubernetes"], remove=["Terraform"])
+    terms = {t.name: t for t in match.terms}
+
+    assert "Terraform" not in terms
+    assert terms["product strategy"].source == "user" and terms["product strategy"].level == "exact"
+    # An added dictionary skill keeps its synonyms.
+    assert terms["Kubernetes"].level == "synonym"
+    assert terms["Python"].source == "job"
+
+    only = match_job(document, "", report.section_lines, add=["Python", "Scrum"])
+    assert {t.name: t.level for t in only.terms} == {"Python": "exact", "Scrum": "missing"}
+    assert only.required_coverage == 0.5
+
+
+def test_title_needs_the_exact_phrase(tmp_path):
+    document, report = resume(tmp_path, "EXPERIENCE", "Project Manager, Acme, 2021 - 2023")
+    assert match_job(document, "", report.section_lines, title="Product Manager").title_match is None
+    assert match_job(document, "", report.section_lines, title="Project Manager").title_match.startswith("Project Manager")
