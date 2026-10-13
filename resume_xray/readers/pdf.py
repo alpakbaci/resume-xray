@@ -15,7 +15,7 @@ BOLD_FONT = re.compile(r"bold|black|heavy|semibold|demi", re.IGNORECASE)
 
 def read_pdf(path: Path) -> Document:
     weights = load_weights()
-    row_tolerance = weights["reader"]["line_tolerance_pt"]
+    row_overlap = weights["reader"]["row_overlap_min"]
     split_gap = weights["parseability"]["gutter_min_width_pt"]
     alt_texts = _read_with_pypdf(path)
 
@@ -23,6 +23,8 @@ def read_pdf(path: Path) -> Document:
     with pdfplumber.open(path) as pdf:
         for index, page in enumerate(pdf.pages):
             number = index + 1
+            # Font details are taken per character rather than via extra_attrs, which would split a
+            # word wherever the font subset changes (e.g. "TÜBİTAK" whose İ comes from another subset).
             words = [
                 Word(
                     text=w["text"],
@@ -30,10 +32,10 @@ def read_pdf(path: Path) -> Document:
                     top=w["top"],
                     x1=w["x1"],
                     bottom=w["bottom"],
-                    font_size=w["size"],
-                    bold=bool(BOLD_FONT.search(w["fontname"])),
+                    font_size=median(c["size"] for c in w["chars"]),
+                    bold=sum(bool(BOLD_FONT.search(c["fontname"])) for c in w["chars"]) * 2 > len(w["chars"]),
                 )
-                for w in page.extract_words(extra_attrs=["fontname", "size"])
+                for w in page.extract_words(return_chars=True)
             ]
             pages.append(
                 Page(
@@ -43,25 +45,31 @@ def read_pdf(path: Path) -> Document:
                     text=page.extract_text() or "",
                     alt_text=alt_texts[index] if index < len(alt_texts) else None,
                     words=words,
-                    lines=group_lines(words, number, row_tolerance, split_gap),
+                    lines=group_lines(words, number, row_overlap, split_gap),
                     char_count=sum(1 for c in page.chars if not c["text"].isspace()),
                 )
             )
     return Document(name=path.name, kind="pdf", pages=pages)
 
 
-def group_lines(words: list[Word], page: int, row_tolerance: float, split_gap: float) -> list[Line]:
+def group_lines(words: list[Word], page: int, row_overlap: float, split_gap: float) -> list[Line]:
     """Group words into visual rows, then split rows at gaps wide enough to be a column gutter."""
     rows: list[list[Word]] = []
+    spans: list[tuple[float, float]] = []
     for word in sorted(words, key=lambda w: (w.top, w.x0)):
-        if rows and abs(word.top - rows[-1][0].top) <= row_tolerance:
-            rows[-1].append(word)
+        for row, (top, bottom) in zip(rows, spans):
+            if _overlap_ratio(word.top, word.bottom, top, bottom) >= row_overlap:
+                row.append(word)
+                break
         else:
             rows.append([word])
+            spans.append((word.top, word.bottom))
 
     lines = []
     for row in rows:
-        row.sort(key=lambda w: w.x0)
+        # Words starting at the same x: the narrower first. Some PDFs put a tiny invisible bullet
+        # glyph exactly over the first letter of the line (the visible bullet is a drawn shape).
+        row.sort(key=lambda w: (w.x0, w.x1))
         segment = [row[0]]
         for word in row[1:]:
             if word.x0 - segment[-1].x1 > split_gap:
@@ -70,6 +78,13 @@ def group_lines(words: list[Word], page: int, row_tolerance: float, split_gap: f
             segment.append(word)
         lines.append(_make_line(segment, page))
     return lines
+
+
+def _overlap_ratio(top_a: float, bottom_a: float, top_b: float, bottom_b: float) -> float:
+    shorter = min(bottom_a - top_a, bottom_b - top_b)
+    if shorter <= 0:
+        return 0.0
+    return max(0.0, min(bottom_a, bottom_b) - max(top_a, top_b)) / shorter
 
 
 def _make_line(words: list[Word], page: int) -> Line:

@@ -53,22 +53,40 @@ thresholds.
 - No `critical`, at least one `warning` → **Risky**
 - Otherwise → **OK**
 
-### 2.0 Reading the document (`line_tolerance_pt = 3`)
+### 2.0 Reading the document (`row_overlap_min = 0.5`)
 
 Both formats are converted into one shared representation: lines of text with their page, font
 size, boldness and region (body, header, footer, table, text box). PDF lines also carry their
 position in points. All checks below work only on this representation.
 
-**PDF.** `pdfplumber` gives every word with its coordinates, font name and size. Words whose top
-edges are within 3 points of each other form one visual row. A row is then split into separate
+**PDF.** `pdfplumber` gives every word with its coordinates, font name and size. A word joins
+a visual row when its vertical extent overlaps the row's by at least half of the smaller of the
+two heights:
+
+```
+overlap(word, row) / min(height(word), height(row)) ≥ 0.5
+```
+
+A row is then split into separate
 lines wherever the gap between two words is wider than `gutter_min_width_pt` (see 2.3), so the
 left and right columns of a two-column page do not merge into one line. A word counts as bold when
 its font name contains Bold, Black, Heavy, Semibold or Demi. The page's raw text, as a simple ATS
 would extract it, comes from `pdfplumber`; `pypdf` reads the same page a second time for 2.4.
 
-*Justification:* Words on the same row differ in their top edge by at most 1–2 points (for example
-a bold label next to regular text), while the next row is at least one line height away (about
-8 points or more for body text). 3 points sits safely between the two.
+*Justification:* Words on one line share most of their height, even when their sizes differ: a
+small glyph such as a bullet sits entirely inside the line (ratio 1.0). Consecutive lines barely
+overlap, because line spacing is normally at least the font size (ratio near 0, at most about 0.2
+with very tight spacing). 0.5 sits safely between the two.
+
+Within a line, words are ordered left to right; words starting at the same x are ordered
+narrower first. Word boundaries come from character spacing only, never from font changes.
+
+*Found on a real resume:* An earlier version grouped words whose top edges were within 3 points.
+On one resume the visible bullets were drawn shapes, and an invisible 0.75 pt text bullet sat over
+the first letter of each item, 6.7 points below the line's top. Top-edge grouping moved that bullet
+to the end of the line ("Managed •"); overlap grouping and the narrower-first rule put it back in
+front. The same resume used a separate font subset for the letter İ, and splitting words at font
+changes had turned "TÜBİTAK" into "TÜB İ TAK". See 2.8 for why such bullets are still reported.
 
 **DOCX.** `python-docx` gives paragraphs in body order, tables, and each section's header and
 footer. Text boxes are read from the raw XML (`w:txbxContent`), because `python-docx` does not
@@ -165,6 +183,19 @@ date ranges (`MM/YYYY`, `Jan 2021`, `Oca 2021`, `2019–2021`, "Present" / "Gün
 
 - No email at all → **critical**
 - The date of an experience entry cannot be parsed (e.g. "Summer 2021") → **warning**
+
+### 2.8 Misaligned bullets (`bullet_size_ratio = 0.5`)
+
+A bullet glyph (`•`, `●`, `▪`, `■`, `◦`, `►`, `–`, `-`, `*`) at the start of a line whose font size
+is below half of the line's median font size is reported → **warning**.
+
+*Justification:* Some resume builders (typically HTML-to-PDF exports) draw the visible bullet as
+a shape and add a tiny, shifted text bullet for copy and paste. Readers that order text by position
+(like `pdfplumber`'s plain text, and many ATSs) then put the bullet on its own line after the first
+line of the item, so the next item appears to start in the middle of the previous one. Readers
+that follow the PDF's content stream (like `pypdf`) read it correctly, so the outcome depends on
+which reader an ATS uses. Normally styled bullets are 50–100% of the text size; the case that
+motivated this check was 7.5% (0.75 pt next to 10 pt text).
 
 ---
 

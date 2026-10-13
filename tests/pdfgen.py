@@ -1,6 +1,6 @@
 """Builds small text PDFs for tests, with no extra dependency.
 
-Uses the standard Helvetica fonts, so text must be Latin-1. Positions are in points from the
+Uses the standard Helvetica fonts with WinAnsi encoding, so text must fit in cp1252. Positions are in points from the
 top-left corner of an A4 page; `y` is the text baseline.
 """
 
@@ -17,6 +17,8 @@ class Text:
     text: str
     size: float = 11
     bold: bool = False
+    # Text continuing right after `text` in the other font (regular <-> bold).
+    then: str = ""
 
 
 def write_pdf(path: Path, pages: list[list[Text]]) -> Path:
@@ -34,8 +36,11 @@ def write_pdf(path: Path, pages: list[list[Text]]) -> Path:
     page_ids = []
     for texts in pages:
         stream = b"".join(
-            b"BT /%s %g Tf %g %g Td (%s) Tj ET\n"
-            % (b"F2" if t.bold else b"F1", t.size, t.x, height - t.y, _escape(t.text))
+            b"BT /%s %g Tf %g %g Td (%s) Tj /%s %g Tf (%s) Tj ET\n"
+            % (
+                b"F2" if t.bold else b"F1", t.size, t.x, height - t.y, _escape(t.text),
+                b"F1" if t.bold else b"F2", t.size, _escape(t.then),
+            )
             for t in texts
         )
         content = add(b"<< /Length %d >>\nstream\n%s\nendstream" % (len(stream), stream))
@@ -64,4 +69,4 @@ def write_pdf(path: Path, pages: list[list[Text]]) -> Path:
 
 
 def _escape(text: str) -> bytes:
-    return text.encode("latin-1").replace(b"\\", b"\\\\").replace(b"(", b"\\(").replace(b")", b"\\)")
+    return text.encode("cp1252").replace(b"\\", b"\\\\").replace(b"(", b"\\(").replace(b")", b"\\)")

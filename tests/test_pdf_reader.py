@@ -48,6 +48,39 @@ def test_two_columns_are_not_merged_into_one_line(tmp_path):
     assert "Backend Developer at Acme Python, Docker" in document.pages[0].text
 
 
+def test_tiny_shifted_bullet_stays_with_its_sentence(tmp_path):
+    # Seen on a real resume: bullets drawn as 0.7 pt glyphs, about 6.7 pt below the line's top.
+    pages = [[
+        Text(50, 150, "\u2022", size=0.7),
+        Text(58, 156, "Managed 2-4 concurrent projects", size=10),
+        Text(50, 167, "\u2022", size=0.7),
+        Text(58, 173, "Coordinated cross-functional teams", size=10),
+    ]]
+    document = read_document(write_pdf(tmp_path / "cv.pdf", pages))
+
+    assert [line.text for line in document.lines] == [
+        "\u2022 Managed 2-4 concurrent projects",
+        "\u2022 Coordinated cross-functional teams",
+    ]
+
+
+def test_invisible_bullet_over_first_letter_comes_first(tmp_path):
+    # Seen on a real resume: the visible bullet is a drawn shape; a 0.75 pt text bullet sits
+    # over the first letter, lower than the line's top.
+    pages = [[Text(58, 154, "\u2022", size=0.75), Text(58, 156, "Managed projects", size=10)]]
+    document = read_document(write_pdf(tmp_path / "cv.pdf", pages))
+
+    assert [line.text for line in document.lines] == ["\u2022 Managed projects"]
+
+
+def test_word_is_not_split_where_the_font_changes(tmp_path):
+    # Seen on a real resume: the İ of "TÜBİTAK" came from a different font subset.
+    pages = [[Text(50, 100, "T\u00dcB", size=10, then="ITAK funded")]]
+    document = read_document(write_pdf(tmp_path / "cv.pdf", pages))
+
+    assert [line.text for line in document.lines] == ["T\u00dcBITAK funded"]
+
+
 def test_page_without_text(tmp_path):
     document = read_document(write_pdf(tmp_path / "scan.pdf", [[]]))
 
@@ -62,6 +95,6 @@ def test_group_lines_splits_rows_at_wide_gaps_only():
         return Word(text, x0, top, x0 + 30, top + 10, 11, False)
 
     words = [word("left", 50, 100), word("right", 300, 101), word("near", 85, 100.5), word("next", 50, 120)]
-    lines = group_lines(words, page=1, row_tolerance=3, split_gap=15)
+    lines = group_lines(words, page=1, row_overlap=0.5, split_gap=15)
 
     assert [line.text for line in lines] == ["left near", "right", "next"]

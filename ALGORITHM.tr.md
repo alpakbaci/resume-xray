@@ -50,22 +50,41 @@ Her kontrol bir **şiddet** üretir: `kritik`, `uyarı` veya `bilgi`. Ağırlık
 - `kritik` yok, en az bir `uyarı` → **Riskli**
 - Diğer durumlar → **Uygun**
 
-### 2.0 Belgenin okunması (`line_tolerance_pt = 3`)
+### 2.0 Belgenin okunması (`row_overlap_min = 0.5`)
 
 İki format da ortak bir ara biçime çevrilir: sayfası, font boyutu, kalınlığı ve bölgesi (gövde,
 üst bilgi, alt bilgi, tablo, metin kutusu) bilinen metin satırları. PDF satırları ayrıca punto
 cinsinden konumlarını taşır. Aşağıdaki tüm kontroller yalnızca bu ara biçim üzerinde çalışır.
 
-**PDF.** `pdfplumber` her kelimeyi koordinatları, font adı ve boyutuyla verir. Üst kenarları
-birbirine 3 puntodan yakın kelimeler tek bir görsel sıra oluşturur. Sıra, iki kelime arasındaki
+**PDF.** `pdfplumber` her kelimeyi koordinatları, font adı ve boyutuyla verir. Bir kelimenin
+dikey alanı, sıranın dikey alanıyla ikisinin küçük yüksekliğinin en az yarısı kadar örtüşüyorsa
+kelime o sıraya katılır:
+
+```
+örtüşme(kelime, sıra) / min(yükseklik(kelime), yükseklik(sıra)) ≥ 0.5
+```
+
+Sıra, iki kelime arasındaki
 boşluğun `gutter_min_width_pt` değerinden (bkz. 2.3) geniş olduğu yerlerden ayrı satırlara
 bölünür; böylece iki sütunlu bir sayfanın sol ve sağ sütunu tek satırda birleşmez. Font adında
 Bold, Black, Heavy, Semibold veya Demi geçen kelime kalın sayılır. Sayfanın basit bir ATS'nin
 çıkaracağı ham metni `pdfplumber`'dan gelir; `pypdf` aynı sayfayı 2.4 için ikinci kez okur.
 
-*Gerekçe:* Aynı sıradaki kelimelerin üst kenarları en fazla 1–2 punto farklıdır (ör. normal metnin
-yanındaki kalın bir etiket); bir sonraki sıra ise en az bir satır yüksekliği (gövde metni için
-yaklaşık 8 punto veya daha fazla) uzaktadır. 3 punto ikisinin arasında güvenli bir değerdir.
+*Gerekçe:* Aynı satırdaki kelimeler, boyutları farklı olsa bile yüksekliklerinin çoğunu paylaşır:
+madde işareti gibi küçük bir karakter tamamen satırın içinde kalır (oran 1.0). Ardışık satırlar ise
+neredeyse hiç örtüşmez, çünkü satır aralığı normalde en az font boyutu kadardır (oran 0'a yakın,
+çok sık aralıkta en fazla yaklaşık 0.2). 0.5 ikisinin arasında güvenli bir değerdir.
+
+Satır içinde kelimeler soldan sağa sıralanır; aynı x konumunda başlayan kelimelerde dar olan önce
+gelir. Kelime sınırları yalnızca karakter aralıklarından belirlenir, font değişiminden asla.
+
+*Gerçek bir CV'de bulundu:* Önceki sürüm, üst kenarları 3 puntodan yakın kelimeleri grupluyordu.
+Bir CV'de görünen madde işaretleri çizilmiş şekillerdi; her maddenin ilk harfinin üzerinde,
+satırın üstünden 6.7 punto aşağıda, görünmez 0.75 puntoluk bir metin madde işareti duruyordu. Üst
+kenar gruplaması bu işareti satırın sonuna taşıyordu ("Managed •"); örtüşme gruplaması ve "dar olan
+önce" kuralı onu tekrar başa aldı. Aynı CV, İ harfi için ayrı bir font alt kümesi kullanıyordu ve
+kelimeleri font değişiminde bölmek "TÜBİTAK"ı "TÜB İ TAK" yapıyordu. Bu tür madde işaretlerinin
+neden yine de raporlandığı için bkz. 2.8.
 
 **DOCX.** `python-docx` paragrafları gövdedeki sırasıyla, tabloları ve her bölümün üst/alt
 bilgisini verir. Metin kutuları ham XML'den (`w:txbxContent`) okunur, çünkü `python-docx` bunları
@@ -161,6 +180,20 @@ LinkedIn adresi ve tarih aralıkları (`MM/YYYY`, `Oca 2021`, `Jan 2021`, `2019�
 
 - E-posta hiç yok → **kritik**
 - Bir deneyim kaydının tarihi ayrıştırılamıyor (ör. "Yaz 2021") → **uyarı**
+
+### 2.8 Hizasız madde işaretleri (`bullet_size_ratio = 0.5`)
+
+Satır başındaki bir madde işaretinin (`•`, `●`, `▪`, `■`, `◦`, `►`, `–`, `-`, `*`) font boyutu
+satırın medyan font boyutunun yarısından küçükse raporlanır → **uyarı**.
+
+*Gerekçe:* Bazı CV oluşturucular (genellikle HTML'den PDF'e dönüştürenler) görünen madde işaretini
+şekil olarak çizer ve kopyala-yapıştır için küçük, kaydırılmış bir metin madde işareti ekler. Metni
+konuma göre sıralayan okuyucular (`pdfplumber`'ın düz metni ve birçok ATS gibi) bu durumda madde
+işaretini maddenin ilk satırından sonra ayrı bir satıra koyar; bir sonraki madde, öncekinin
+ortasında başlıyormuş gibi görünür. PDF'in içerik akışını izleyen okuyucular (`pypdf` gibi) doğru
+okur; yani sonuç ATS'nin kullandığı okuyucuya bağlıdır. Normal biçimlendirilmiş madde işaretleri
+metin boyutunun %50–100'ü kadardır; bu kontrolü doğuran vakada oran %7.5 idi (10 puntoluk metnin
+yanında 0.75 punto).
 
 ---
 

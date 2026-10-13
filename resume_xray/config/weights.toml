@@ -3,8 +3,8 @@
 # tests/test_config.py fails if this file and ALGORITHM.md disagree.
 
 [reader]
-# 2.0 Words whose top edges are this close form one visual row.
-line_tolerance_pt = 3
+# 2.0 A word joins a row when overlap / min(word height, row height) is at least this.
+row_overlap_min = 0.5
 
 [parseability]
 # 2.1 Text layer: fewer characters than this on a page means a scanned image.
@@ -31,6 +31,9 @@ header_footer_band = 0.08
 heading_max_words = 4
 heading_size_ratio = 1.15
 heading_match_min = 85
+
+# 2.8 A leading bullet smaller than this fraction of the line's font size is misaligned.
+bullet_size_ratio = 0.5
 
 [match]
 # 3.3 Requirement factor r_t.
