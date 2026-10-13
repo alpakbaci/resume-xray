@@ -1,6 +1,7 @@
 # Algoritma
 
 [English](ALGORITHM.md)
+
 Bu belge, ats-checker'ın bir CV'yi nasıl analiz ettiğini, hangi hesapları neden yaptığını ve
 kullandığı her eşik ile ağırlığın gerekçesini anlatır. Koddaki tüm sabitler
 `ats_checker/config/weights.toml` dosyasında bu belgedeki adlarıyla tutulur.
