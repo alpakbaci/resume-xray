@@ -8,6 +8,7 @@ import pdfplumber
 from pypdf import PdfReader
 
 from resume_xray.config import load_weights
+from resume_xray.layout import column_order, find_gutter
 from resume_xray.models import Document, Line, Page, Word
 
 BOLD_FONT = re.compile(r"bold|black|heavy|semibold|demi", re.IGNORECASE)
@@ -37,16 +38,23 @@ def read_pdf(path: Path) -> Document:
                 )
                 for w in page.extract_words(return_chars=True)
             ]
+            lines = group_lines(words, number, row_overlap, split_gap)
+            gutter = find_gutter(lines, float(page.width), weights["parseability"])
             pages.append(
                 Page(
                     number=number,
                     width=float(page.width),
                     height=float(page.height),
-                    text=page.extract_text() or "",
-                    alt_text=alt_texts[index] if index < len(alt_texts) else None,
+                    readings={
+                        "stream": alt_texts[index] if index < len(alt_texts) else None,
+                        "position": page.extract_text() or "",
+                        "columns": column_order(lines, gutter),
+                    },
                     words=words,
-                    lines=group_lines(words, number, row_overlap, split_gap),
+                    lines=lines,
                     char_count=sum(1 for c in page.chars if not c["text"].isspace()),
+                    gutter=gutter,
+                    links=[link["uri"] for link in page.hyperlinks if link.get("uri")],
                 )
             )
     return Document(name=path.name, kind="pdf", pages=pages)
@@ -66,17 +74,17 @@ def group_lines(words: list[Word], page: int, row_overlap: float, split_gap: flo
             spans.append((word.top, word.bottom))
 
     lines = []
-    for row in rows:
+    for row_index, row in enumerate(rows):
         # Words starting at the same x: the narrower first. Some PDFs put a tiny invisible bullet
         # glyph exactly over the first letter of the line (the visible bullet is a drawn shape).
         row.sort(key=lambda w: (w.x0, w.x1))
         segment = [row[0]]
         for word in row[1:]:
             if word.x0 - segment[-1].x1 > split_gap:
-                lines.append(_make_line(segment, page))
+                lines.append(_make_line(segment, page, row_index))
                 segment = []
             segment.append(word)
-        lines.append(_make_line(segment, page))
+        lines.append(_make_line(segment, page, row_index))
     return lines
 
 
@@ -87,10 +95,12 @@ def _overlap_ratio(top_a: float, bottom_a: float, top_b: float, bottom_b: float)
     return max(0.0, min(bottom_a, bottom_b) - max(top_a, top_b)) / shorter
 
 
-def _make_line(words: list[Word], page: int) -> Line:
+def _make_line(words: list[Word], page: int, row: int) -> Line:
     return Line(
         text=" ".join(w.text for w in words),
         page=page,
+        row=row,
+        sizes=tuple(w.font_size for w in words),
         font_size=median(w.font_size for w in words),
         bold=sum(w.bold for w in words) * 2 > len(words),
         bbox=(

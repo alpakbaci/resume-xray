@@ -34,8 +34,8 @@ def test_reads_lines_fonts_and_both_readers(tmp_path):
     assert heading.bold and heading.font_size == 13
     assert not next(line for line in page.lines if line.text.startswith("Built")).bold
     assert page.char_count > 100
-    assert "Backend Developer" in page.text
-    assert "Backend Developer" in page.alt_text
+    for strategy in ("stream", "position", "columns"):
+        assert "Backend Developer" in page.readings[strategy]
 
 
 def test_two_columns_are_not_merged_into_one_line(tmp_path):
@@ -44,8 +44,13 @@ def test_two_columns_are_not_merged_into_one_line(tmp_path):
     texts = [line.text for line in document.lines]
     assert "EXPERIENCE" in texts and "SKILLS" in texts
     assert "Backend Developer at Acme" in texts and "Python, Docker" in texts
-    # A naive extraction runs straight across both columns, which is what the user should see.
-    assert "Backend Developer at Acme Python, Docker" in document.pages[0].text
+    readings = document.pages[0].readings
+    # Position order runs straight across both columns; column-aware order keeps them apart.
+    assert "Backend Developer at Acme Python, Docker" in readings["position"]
+    assert readings["columns"].splitlines() == [
+        "EXPERIENCE", "Backend Developer at Acme", "Built REST APIs", "SKILLS", "Python, Docker", "PostgreSQL, Git",
+    ]
+    assert document.pages[0].gutter is not None
 
 
 def test_tiny_shifted_bullet_stays_with_its_sentence(tmp_path):
@@ -86,7 +91,7 @@ def test_page_without_text(tmp_path):
 
     page = document.pages[0]
     assert page.char_count == 0
-    assert page.text == ""
+    assert page.readings["position"] == ""
     assert page.lines == []
 
 

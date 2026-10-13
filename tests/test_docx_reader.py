@@ -58,8 +58,10 @@ def test_reads_regions_fonts_and_columns(resume_docx):
     assert by_region["table"] == ["Python", "Docker"]
     # Word stores a text box twice; it must be read once.
     assert by_region["textbox"] == ["Languages: English, Turkish"]
-    assert "Languages" not in page.text
-    assert "jane.doe" not in page.text
+    assert "Languages" not in page.readings["body"]
+    assert "jane.doe" not in page.readings["body"]
+    assert page.readings["full"].splitlines()[0].startswith("jane.doe")
+    assert "Languages: English, Turkish" in page.readings["full"]
 
     name = next(line for line in page.lines if line.text == "Jane Doe")
     assert name.bold and name.font_size == 20
@@ -68,12 +70,12 @@ def test_reads_regions_fonts_and_columns(resume_docx):
     assert page.columns == 2
 
 
-def test_raw_output_labels_regions(resume_docx):
+def test_raw_output_shows_each_strategy(resume_docx):
     raw = format_raw(read_document(resume_docx))
 
-    assert "── Body ──" in raw
-    assert "── Header (some ATSs skip this) ──" in raw
-    assert "── Text boxes (some ATSs skip or misplace these) ──" in raw
+    full, body = raw.split("══ Body paragraphs only")
+    assert "jane.doe@example.com" in full and "Languages: English, Turkish" in full
+    assert "jane.doe@example.com" not in body and "Languages" not in body
 
 
 @pytest.mark.parametrize(("name", "message"), [("cv.doc", "Old .doc"), ("cv.pages", "Unsupported")])

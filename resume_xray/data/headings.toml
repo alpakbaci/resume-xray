@@ -1,0 +1,18 @@
+# Standard resume section headings (English and Turkish), used by check 2.6.
+# Keys are canonical section names; values are heading variants. Matching folds case and Turkish
+# letters (İ/I/ı -> i, ş -> s, ...), so each variant needs to be listed once.
+
+summary = ["Summary", "Profile", "Professional Summary", "About Me", "About", "Objective", "Career Objective", "Özet", "Hakkımda", "Profil", "Kariyer Hedefi", "Ön Yazı"]
+experience = ["Experience", "Work Experience", "Professional Experience", "Employment History", "Work History", "Career History", "Employment", "Deneyim", "İş Deneyimi", "Profesyonel Deneyim", "Tecrübe", "İş Tecrübesi", "Deneyimler"]
+education = ["Education", "Academic Background", "Education and Training", "Eğitim", "Eğitim Bilgileri", "Öğrenim", "Eğitim Bilgisi"]
+skills = ["Skills", "Technical Skills", "Core Competencies", "Competencies", "Key Skills", "Yetenekler", "Beceriler", "Yetkinlikler", "Teknik Beceriler", "Teknik Yetkinlikler"]
+projects = ["Projects", "Projeler"]
+certifications = ["Certifications", "Certificates", "Licenses and Certifications", "Sertifikalar", "Belgeler"]
+languages = ["Languages", "Diller", "Yabancı Diller", "Yabancı Dil"]
+publications = ["Publications", "Yayınlar"]
+awards = ["Awards", "Honors", "Honors and Awards", "Ödüller", "Başarılar"]
+volunteer = ["Volunteer Experience", "Volunteering", "Gönüllülük", "Gönüllü Çalışmalar"]
+references = ["References", "Referanslar"]
+interests = ["Interests", "Hobbies", "İlgi Alanları", "Hobiler"]
+courses = ["Courses", "Training", "Kurslar", "Eğitimler"]
+contact = ["Contact", "Contact Information", "İletişim", "İletişim Bilgileri"]

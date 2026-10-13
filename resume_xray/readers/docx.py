@@ -40,15 +40,24 @@ def read_docx(path: Path) -> Document:
                 for table in part.tables:
                     lines.extend(_table_lines(table, region))
 
+    def text(regions: tuple[str, ...]) -> str:
+        return "\n".join(line.text for line in lines if line.region in regions)
+
     section = document.sections[0] if document.sections else None
     page = Page(
         number=1,
         width=section.page_width / EMU_PER_PT if section and section.page_width else None,
         height=section.page_height / EMU_PER_PT if section and section.page_height else None,
-        text="\n".join(line.text for line in lines if line.region in ("body", "table")),
+        readings={
+            # Every part, in page order. Text boxes follow the paragraph that holds them.
+            "full": "\n".join(filter(None, (text(("header",)), text(("body", "table", "textbox")), text(("footer",))))),
+            # What python-docx's document.paragraphs and document.tables give (our observation).
+            "body": text(("body", "table")),
+        },
         lines=lines,
         char_count=sum(1 for line in lines for c in line.text if not c.isspace()),
         columns=max((_declared_columns(s) for s in document.sections), default=1),
+        links=[r.target_ref for r in document.part.rels.values() if r.is_external and r.reltype.endswith("/hyperlink")],
     )
     return Document(name=path.name, kind="docx", pages=[page])
 

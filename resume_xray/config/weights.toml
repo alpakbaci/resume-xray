@@ -20,17 +20,17 @@ gutter_max_coverage = 0.05
 gutter_min_height = 0.5
 gutter_x_range = [0.2, 0.8]
 
-# 2.4 Agreement between the two PDF readers.
-agreement_bag_min = 0.9
-agreement_order_max = 0.7
-
-# 2.5 Header/footer band as a fraction of page height.
-header_footer_band = 0.08
+# 2.4 A reading whose word order is less similar than this to the column-aware reading is scrambled.
+agreement_order_max = 0.85
 
 # 2.6 Section heading detection.
 heading_max_words = 4
 heading_size_ratio = 1.15
 heading_match_min = 85
+
+# 2.7 A phone number has this many digits (national numbers up to the E.164 maximum).
+phone_min_digits = 10
+phone_max_digits = 15
 
 # 2.8 A leading bullet smaller than this fraction of the line's font size is misaligned.
 bullet_size_ratio = 0.5

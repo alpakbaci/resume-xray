@@ -61,8 +61,16 @@ eder:
 | **Konum sırası** | Metni yukarıdan aşağı, soldan sağa sıralar | `sortByPosition` açık PDFBox/Tika; belgelerine göre sütunları birbirine karıştırabilir [4] | `pdfplumber` düz metni |
 | **Sütun farkındalıklı okuma** | Önce sütunları bulur, sonra sırayla okur | `pdftotext` varsayılanı, sütun gibi fiziksel düzeni "geri almaya" çalışır [5]; Textkernel, sütun ayraçlarını eğitilmiş bir modelle bulur [6] | Kendi satır ve kanal tespitimiz (2.0, 2.3) |
 
-Bir veya iki stratejiyi bozan sorun **riskli** ("bazı ATS'ler") olarak, üçünü de bozan sorun
-**kritik** olarak raporlanır. Her bulgu hangi stratejileri etkilediğini belirtir.
+DOCX'te soru sıra değil, hangi bölümlerin okunduğudur. Word üst bilgiyi, alt bilgiyi ve metin
+kutularını gövde paragraflarından ayrı saklar; bu yüzden resume-xray iki okumayı karşılaştırır:
+
+| Strateji | Ne okur | Dayanak |
+|---|---|---|
+| **Belgenin tüm bölümleri** | Üst bilgi, gövde, tablolar, metin kutuları, alt bilgi | Tam çıkarıcıların döndürdüğü; ör. mammoth metin kutularını "kutuyu içeren paragraftan sonra gelen ayrı bir paragraf" olarak okur [8] |
+| **Yalnızca gövde paragrafları** | Gövde paragrafları ve tablolar | `python-docx`'in `document.paragraphs` ve `document.tables` ile döndürdüğü (kendi gözlemimiz) |
+
+Bazı stratejileri bozan sorun **uyarı** ("bazı ATS'ler"), tüm stratejileri bozan sorun **kritik**
+olarak raporlanır. Her bulgu hangi stratejileri etkilediğini belirtir.
 
 ---
 
@@ -78,8 +86,8 @@ Her kontrol bir **şiddet** üretir: `kritik`, `uyarı` veya `bilgi`. Ağırlık
 
 İki format da ortak bir ara biçime çevrilir: sayfası, font boyutu, kalınlığı ve bölgesi (gövde,
 üst bilgi, alt bilgi, tablo, metin kutusu) bilinen metin satırları. PDF satırları ayrıca punto
-cinsinden konumlarını taşır. Bu ara biçim, yukarıdaki tablodaki sütun farkındalıklı okumadır; diğer iki
-stratejinin ham metinleri de kontrollerin karşılaştırabilmesi için yanında tutulur.
+cinsinden konumlarını ve ait oldukları görsel sırayı taşır. Her sayfa, kontrollerin
+karşılaştırabilmesi için her okuma stratejisinin tam metnini de saklar.
 
 **PDF.** `pdfplumber` her kelimeyi koordinatları, font adı ve boyutuyla verir. Bir kelimenin
 dikey alanı, sıranın dikey alanıyla ikisinin küçük yüksekliğinin en az yarısı kadar örtüşüyorsa
@@ -89,11 +97,10 @@ kelime o sıraya katılır:
 örtüşme(kelime, sıra) / min(yükseklik(kelime), yükseklik(sıra)) ≥ 0.5
 ```
 
-Sıra, iki kelime arasındaki
-boşluğun `gutter_min_width_pt` değerinden (bkz. 2.3) geniş olduğu yerlerden ayrı satırlara
-bölünür; böylece iki sütunlu bir sayfanın sol ve sağ sütunu tek satırda birleşmez. Font adında
-Bold, Black, Heavy, Semibold veya Demi geçen kelime kalın sayılır. Sayfanın basit bir ATS'nin
-çıkaracağı ham metni `pdfplumber`'dan gelir; `pypdf` aynı sayfayı 2.4 için ikinci kez okur.
+Sıra, iki kelime arasındaki boşluğun `gutter_min_width_pt` değerinden (bkz. 2.3) geniş olduğu
+yerlerden ayrı satırlara bölünür; böylece iki sütunlu bir sayfanın sol ve sağ sütunu tek satırda
+birleşmez. Karakterlerinin çoğu adında Bold, Black, Heavy, Semibold veya Demi geçen bir fonttan
+gelen kelime kalın sayılır.
 
 *Gerekçe:* Aynı satırdaki kelimeler, boyutları farklı olsa bile yüksekliklerinin çoğunu paylaşır:
 madde işareti gibi küçük bir karakter tamamen satırın içinde kalır (oran 1.0). Ardışık satırlar ise
@@ -104,122 +111,161 @@ Satır içinde kelimeler soldan sağa sıralanır; aynı x konumunda başlayan k
 gelir. Kelime sınırları yalnızca karakter aralıklarından belirlenir, font değişiminden asla.
 
 *Gerçek bir CV'de bulundu:* Önceki sürüm, üst kenarları 3 puntodan yakın kelimeleri grupluyordu.
-Bir CV'de görünen madde işaretleri çizilmiş şekillerdi; her maddenin ilk harfinin üzerinde,
-satırın üstünden 6.7 punto aşağıda, görünmez 0.75 puntoluk bir metin madde işareti duruyordu. Üst
-kenar gruplaması bu işareti satırın sonuna taşıyordu ("Managed •"); örtüşme gruplaması ve "dar olan
-önce" kuralı onu tekrar başa aldı. Aynı CV, İ harfi için ayrı bir font alt kümesi kullanıyordu ve
-kelimeleri font değişiminde bölmek "TÜBİTAK"ı "TÜB İ TAK" yapıyordu. Bu tür madde işaretlerinin
-neden yine de raporlandığı için bkz. 2.8.
+Bir CV'de görünen madde işaretleri çizilmiş şekillerdi; her maddenin ilk harfinin üzerinde, metnin
+taban çizgisinde ve satırın üstünden 6.7 punto aşağıda görünmez 0.75 puntoluk bir metin madde
+işareti duruyordu. Üst kenar gruplaması bu işareti satırın sonuna taşıyordu ("Managed •"); örtüşme
+gruplaması ve "dar olan önce" kuralı onu tekrar başa aldı. Aynı CV, İ harfi için ayrı bir font alt
+kümesi kullanıyordu ve kelimeleri font değişiminde bölmek "TÜBİTAK"ı "TÜB İ TAK" yapıyordu.
+
+Bir PDF sayfasının üç okuması:
+
+- **İçerik akışı sırası:** `pypdf`'in `extract_text()` çıktısı.
+- **Konum sırası:** `pdfplumber`'ın `extract_text()` çıktısı.
+- **Sütun farkındalıklı sıra:** bizim satırlarımız. Kanal (2.3) yoksa sıralar yukarıdan aşağı
+  okunur. Kanal varsa, kanalı kesen satırlar sayfayı bloklara böler; bir blokta iki tarafta da en
+  az iki sıra varsa önce sol, sonra sağ sütun okunur, yoksa blok sıra sıra okunur (böylece iki
+  tarafta öğesi olan bir iletişim satırı bir arada kalır).
 
 **DOCX.** `python-docx` paragrafları gövdedeki sırasıyla, tabloları ve her bölümün üst/alt
 bilgisini verir. Metin kutuları ham XML'den (`w:txbxContent`) okunur, çünkü `python-docx` bunları
-sunmaz. Font boyutu ve kalınlık metin parçalarından (run), yoksa paragraf stilinden alınır. Bölüm
-ayarlarında tanımlı sütun sayısı (`w:cols`) 2.3 için saklanır.
+sunmaz; Word her kutuyu iki kez saklar (DrawingML ve VML yedeği) ve yalnızca biri okunur. Font
+boyutu ve kalınlık metin parçalarından (run), yoksa paragraf stilinden alınır. Her iki formatta da
+bağlantı (hyperlink) hedefleri 2.7 için toplanır.
 
 ### 2.1 Metin katmanı (`min_chars_per_page = 50`)
 
-Her sayfadan çıkarılan karakter sayısı `n_c` hesaplanır. `n_c < 50` ise sayfa taranmış bir
-görüntüdür → **kritik**.
+Her sayfadaki boşluk olmayan karakter sayısı `n_c` hesaplanır. `n_c < 50` ise sayfa taranmış bir
+görüntü veya şekle dönüştürülmüş metindir → **kritik** (tüm stratejileri bozar; yalnızca OCR
+çalıştıran bir ATS okuyabilir [4]).
 
-*Gerekçe:* Tipik bir CV sayfası 1.500–3.000 karakter içerir. 50'nin altı, yalnızca sayfa numarası
-gibi kırıntıların çıkarılabildiği anlamına gelir.
+*Gerekçe:* Tipik bir CV sayfası 1.500–3.000 karakter içerir (kendi gözlemimiz). 50'nin altı,
+yalnızca sayfa numarası gibi kırıntıların çıkarılabildiği anlamına gelir.
 
-### 2.2 Bozuk karakter oranı (`garbled_warn = 0.02`, `garbled_critical = 0.10`)
+### 2.2 Bozuk karakterler (`garbled_warn = 0.02`, `garbled_critical = 0.10`)
 
 ```
 g = bozuk_karakter_sayısı / toplam_karakter_sayısı
 ```
 
-Bozuk sayılanlar: `(cid:NN)` kalıpları (ToUnicode eşlemesi olmayan fontlar), `U+FFFD` (�) ve
-Unicode özel kullanım alanı `U+E000–U+F8FF` (ikon fontları).
+Sütun farkındalıklı okumada bozuk sayılanlar: `(cid:NN)` kalıpları (karakter eşlemesi olmayan
+fontlar), `U+FFFD` (�) ve Unicode özel kullanım alanı `U+E000–U+F8FF` (ikon fontları).
 
 - `g > 0.02` → **uyarı**, `g > 0.10` → **kritik**
 
 *Gerekçe:* %2'ye kadarı ikon ve madde işaretlerinden gelebilir ve okunabilirliği bozmaz. %10'un
 üstünde kelimeler okunamaz hale gelir.
 
-### 2.3 Çok sütun tespiti (`gutter_min_width_pt = 15`, `gutter_max_coverage = 0.05`, `gutter_min_height = 0.5`, `gutter_x_range = [0.2, 0.8]`)
+### 2.3 Çok sütunlu düzen (`gutter_min_width_pt = 15`, `gutter_max_coverage = 0.05`, `gutter_min_height = 0.5`, `gutter_x_range = [0.2, 0.8]`)
 
 Sayfa genişliği 1 puntoluk dilimlere bölünür. Her dilim için:
 
 ```
-kapsama(x) = o dilimi bir kelime kutusuyla kesen satır sayısı / toplam satır sayısı
+kapsama(x) = kutusu dilimi kesen satır sayısı / toplam satır sayısı
 ```
 
-Sayfa genişliğinin %20–%80 aralığında, en az 15 punto genişliğinde, `kapsama(x) ≤ 0.05` olan
-kesintisiz bir kanal varsa **ve** bu kanal metin yüksekliğinin en az %50'si boyunca sürüyorsa
-sayfa **çok sütunlu** kabul edilir → **uyarı**.
+**Kanal**, sayfa genişliğinin %20–%80 aralığında, en az 15 punto genişliğinde, `kapsama(x) ≤ 0.05`
+olan en geniş kesintisiz şerittir; ancak solundaki ve sağındaki satırların her biri sayfanın metin
+yüksekliğinin en az %50'sini kaplamalıdır.
 
-*Gerekçe:* Sütun arası boşluk genellikle 15 puntodan geniş, kelime arası boşluk 3–5 puntodur.
-%50 yükseklik şartı, yalnızca başlık alanında yan yana öğeler bulunan tek sütunlu sayfaların
-yanlış işaretlenmesini önler. Sonuç **kritik değil**, çünkü sütun farkındalıklı okuyucular
-sütunları çözer; konum sırası okuyucuları ise karıştırır [4]. Textkernel, CV'lerin en az %15'inin
-sütun kullandığını tahmin eder ve görsel boşlukları bulan eski kural tabanlı yöntemini anlatır; bu
-yöntem ona benzer [6].
+Kanalı olan bir sayfada içerik akışı ve konum okumaları sütun farkındalıklı okumayla karşılaştırılır
+(2.4'teki gibi). Bulgu, sütunları karıştıran stratejileri belirten bir **uyarı**, hiçbiri
+karıştırmıyorsa **bilgi** olur.
 
-### 2.4 İki okuyucunun uyuşması (`agreement_bag_min = 0.9`, `agreement_order_max = 0.7`)
+*Gerekçe:* Sütun arası boşluk genellikle 15 puntodan geniş, kelime arası boşluk 3–5 puntodur. %50
+yükseklik şartı, yalnızca başlık alanında yan yana öğeler bulunan tek sütunlu sayfaların yanlış
+işaretlenmesini önler. Sütunlar yalnızca onları karıştıran okuyucular için sorundur; Tika, konuma
+göre sıralamanın "sütunları birbirine karıştırabileceğini" belgeler [4]. Textkernel, CV'lerin en az
+%15'inin sütun kullandığını tahmin eder ve görsel boşlukları bulan eski kural tabanlı yöntemini
+anlatır; bu yöntem ona benzer [6].
 
-PDF hem `pdfplumber` hem `pypdf` ile okunur ve kelime dizileri karşılaştırılır:
+### 2.4 Okuma sırası ve kaybolan kelimeler (`agreement_order_max = 0.85`)
+
+Her sayfada, basit okumaların (içerik akışı, konum) kelime dizisi sütun farkındalıklı okumayla
+karşılaştırılır:
 
 ```
-kelime_benzerliği = |A ∩ B| / |A ∪ B|            (Jaccard, kelime kümeleri)
-sıra_benzerliği   = SequenceMatcher(A, B).ratio() (kelime dizileri)
+sıra_benzerliği = 1 − Indel mesafesi(A, B) / (|A| + |B|)
 ```
 
-`kelime_benzerliği > 0.9` **ve** `sıra_benzerliği < 0.7` ise → **uyarı**: "okuma sırası belirsiz".
+Bu, aynı göreli sırada görünen kelimelerin payıdır (2 × en uzun ortak alt dizi / toplam uzunluk) ve
+`rapidfuzz` ile hesaplanır. Kanalı olmayan bir sayfada `sıra_benzerliği < 0.85` ise → **uyarı**:
+okuyucu metni sayfada göründüğünden farklı bir sırada veriyor.
 
-*Gerekçe:* Farklı ATS'ler farklı PDF okuyucuları kullanır. İki okuyucu aynı kelimeleri farklı
-sırada çıkarıyorsa, belgenin bazı sistemlerde karışık okunma olasılığı yüksektir. Bu kontrol
-2.3'ü destekleyen bağımsız bir sinyaldir.
+Ayrıca sütun farkındalıklı okumadaki her kelimeden basit bir okumada bulunmayanlar listelenir →
+**uyarı**: o kelimeyle arama yapan işe alımcı, bu tür ATS'lerde CV'yi bulamaz. Kelimeler katlama
+(bkz. 2.6) sonrası karşılaştırılır; yalnızca gerçek bölünmeler sayılır.
 
-### 2.5 Üst/alt bilgide iletişim (`header_footer_band = 0.08`)
+*Gerekçe:* Şimdiye kadar ölçülen iki gerçek CV'de sayfa sırasını koruyan okumalar 0.95–1.00,
+iki sütunlu sayfayı karıştıran okumalar 0.61–0.71 aldı (kendi gözlemimiz, bkz. Kalibrasyon). 0.85
+ikisini her iki tarafta da pay bırakarak ayırır. *Gerçek bir CV'de bulundu:* içerik akışı okuması
+"İstanbul"u "İ stanbul", "TÜBİTAK"ı "TÜB İ TAK" olarak böldü, çünkü İ harfi ayrı bir font alt
+kümesinden geliyordu.
 
-- PDF: sayfa yüksekliğinin üst ve alt %8'lik bandı.
-- DOCX: belgenin header/footer bölümleri (dosyada gövdeden ayrı saklanır).
+### 2.5 Gövde dışındaki içerik (DOCX)
 
-E-posta veya telefon **yalnızca** bu alanlarda bulunuyorsa → **uyarı**.
+- E-posta veya telefon **yalnızca** üst veya alt bilgide → "yalnızca gövde paragrafları" için
+  **uyarı**.
+- Metin kutularında herhangi bir metin → "yalnızca gövde paragrafları" için **uyarı**.
 
-*Gerekçe:* Bazı ayrıştırıcılar ve kütüphaneler (ör. mammoth, basit python-docx kullanımı) üst ve
-alt bilgiyi atlar. Düzeltmesi kolay, riski gerçek.
+PDF'te ayrı bir üst bilgi yoktur: sayfanın üstü diğer metinler gibi çıkarılır; bu yüzden PDF için
+bulgu üretilmez.
 
-### 2.6 Bölüm tespiti (`heading_max_words = 4`, `heading_size_ratio = 1.15`, `heading_match_min = 85`)
+*Gerekçe:* Üst bilgi, alt bilgi ve metin kutuları DOCX dosyasının ayrı parçalarıdır ve yalnızca
+gövde paragraflarını alan okuyucular bunları hiç görmez (bkz. bölüm 1'deki DOCX stratejileri).
 
-Bir satır şu koşulları sağlıyorsa **başlık adayıdır**:
+### 2.6 Bölüm başlıkları (`heading_max_words = 4`, `heading_size_ratio = 1.15`, `heading_match_min = 85`)
 
-- en fazla 4 kelime, **ve**
-- şunlardan biri: font boyutu ≥ gövde medyanı × 1.15, kalın yazı veya tamamı büyük harf.
+Bir satır şu koşulları sağlıyorsa **başlık adayıdır**: en fazla 4 kelime, madde işaretiyle
+başlamıyor ve şunlardan en az biri: font boyutu ≥ 1.15 × medyan kelime boyutu, kalın, tamamı büyük
+harf veya bir Word başlık stili.
 
-Aday, Türkçe/İngilizce başlık sözlüğüyle karşılaştırılır (`rapidfuzz.fuzz.ratio ≥ 85`).
+Adaylar, standart İngilizce ve Türkçe başlıklardan oluşan bir sözlükle
+(`resume_xray/data/headings.toml`) **katlama** sonrası `rapidfuzz.fuzz.ratio ≥ 85` ile
+karşılaştırılır. Katlama: küçük harf, `İ`/`I`/`ı` → `i`, diğer Türkçe harfler ASCII'ye (`ş` → `s`,
+...), noktalama kaldırılır. Katlama sayesinde "EXPERIENCE", "Experience", "DENEYİM" ve "Deneyim",
+hangi dile göre küçük harfe çevrildiklerinden bağımsız olarak eşleşir.
 
-- Temel bölümlerden (deneyim, eğitim, yetenekler) biri bulunamazsa → **kritik**
-- Sözlükte karşılığı olmayan başlık adayı → **uyarı** ve en yakın standart başlık önerisi
-  (ör. "Projelerim" → "Projeler")
+- Temel bir bölüm (deneyim, eğitim, yetenekler) tanınmadı → **uyarı**.
+- Sözlükte olmayan ama tanınan başlıklarla aynı stile (boyut, kalınlık, büyük harf) sahip ve ilk
+  tanınan başlıktan sonra gelen aday → **uyarı** ve en yakın standart başlık önerisi. Aynı stil
+  şartı, ismin ve kalın iş unvanlarının başlık sanılmasını önler.
+- Bir okumada kendi satırında olmayan tanınmış başlık → o stratejileri belirten **uyarı**: başlık
+  satırı arayan bir ayrıştırıcı onu görmez.
 
-*Gerekçe:* Ayrıştırıcılar bölümleri başlık sözlükleriyle sınıflandırır. 85 eşiği yazım
-farklarını ("Experiences", "Is Deneyimi") yakalarken alakasız kelimeleri dışarıda bırakır.
+*Gerekçe:* Ayrıştırıcılar bölümleri başlık sözlükleriyle sınıflandırır. 85 eşiği yazım farklarını
+("Experiences", "Language") yakalarken alakasız kelimeleri dışarıda bırakır. Eksik bölüm kritik
+değil uyarıdır: CV'nin geri kalanı yine okunur.
 
-### 2.7 Alan çıkarma
+### 2.7 İletişim bilgileri ve tarihler (`phone_min_digits = 10`, `phone_max_digits = 15`)
 
-Düzenli ifadelerle (regex) şunlar aranır: e-posta, telefon (TR ve uluslararası biçimler),
-LinkedIn adresi ve tarih aralıkları (`MM/YYYY`, `Oca 2021`, `Jan 2021`, `2019–2021`,
-"Günümüz" / "Present").
+Düzenli ifadelerle e-posta adresi, telefon numarası (boşluk, nokta, tire, parantez veya başta `+`
+içerebilen, 10 ile 15 arası rakamlı dizi) ve LinkedIn adresi aranır.
 
-- E-posta hiç yok → **kritik**
-- Bir deneyim kaydının tarihi ayrıştırılamıyor (ör. "Yaz 2021") → **uyarı**
+- Hiçbir okumada e-posta adresi yok → **kritik**.
+- LinkedIn adresi metin olarak değil yalnızca bağlantı hedefi olarak var → **bilgi**: metin
+  çıkarma görünen metni döndürür, bağlantı hedeflerini değil.
+- Mevsim veya çeyrekle yazılmış tarih ("Summer 2021", "Yaz 2021", "Q3 2021") → **uyarı**: aya
+  çevrilemez.
 
-### 2.8 Hizasız madde işaretleri (`bullet_size_ratio = 0.5`)
+*Gerekçe:* 10 rakam, Türkiye'de ve Kuzey Amerika'da ulusal numaranın uzunluğudur; 15, ITU-T E.164'e
+göre uluslararası bir numaranın en fazla uzunluğudur [9].
 
-Satır başındaki bir madde işaretinin (`•`, `●`, `▪`, `■`, `◦`, `►`, `–`, `-`, `*`) font boyutu
-satırın medyan font boyutunun yarısından küçükse raporlanır → **uyarı**.
+### 2.8 Yanlış yere düşen madde işaretleri (`bullet_size_ratio = 0.5`)
+
+Her basit okumada, tek başına bir satırda duran veya satır başında olmayan yuvarlak madde
+işaretleri (`•`, `●`, `▪`, `■`, `◦`, `►`) sayılır. Herhangi bir okumada yanlış yere düşen madde
+işareti varsa → o okumaları ve her birinin kaç madde işaretini kaydırdığını belirten **uyarı**.
+Sütun farkındalıklı okumada madde işaretleri satırlarının geri kalanının medyan boyutunun 0.5
+katından küçükse, bulgu madde işaretlerinin metinden ayrı çizilmiş çok küçük karakterler olduğunu
+açıklar.
 
 *Gerekçe:* Bazı CV oluşturucular (genellikle HTML'den PDF'e dönüştürenler) görünen madde işaretini
-şekil olarak çizer ve kopyala-yapıştır için küçük, kaydırılmış bir metin madde işareti ekler. Metni
-konuma göre sıralayan okuyucular (konum sırası, ör. `pdfplumber`'ın düz metni) bu durumda madde
-işaretini maddenin ilk satırından sonra ayrı bir satıra koyar; bir sonraki madde, öncekinin
-ortasında başlıyormuş gibi görünür. PDF'in içerik akışını izleyen okuyucular (`pypdf` gibi) doğru
-okur; yani sonuç ATS'nin kullandığı okuyucuya bağlıdır. Normal biçimlendirilmiş madde işaretleri
-metin boyutunun %50–100'ü kadardır (kendi gözlemimiz); bu kontrolü doğuran vakada oran %7.5 idi (10 puntoluk metnin
-yanında 0.75 punto).
+şekil olarak çizer ve kopyala-yapıştır için küçük bir metin madde işareti ekler. Konum sırası
+okuyucuları bu durumda madde işaretini maddenin ilk satırından sonra ayrı bir satıra koyar; bir
+sonraki madde, öncekinin ortasında başlıyormuş gibi görünür. İçerik akışı okuyucuları aynı dosyayı
+doğru okur; yani sonuç ATS'nin kullandığı okuyucuya bağlıdır. Normal biçimlendirilmiş madde
+işaretleri metin boyutunun %50–100'ü kadardır (kendi gözlemimiz); bu kontrolü doğuran vakada oran
+%7.5 idi (10 puntoluk metnin yanında 0.75 punto).
 
 ---
 
@@ -325,6 +371,7 @@ Her belge için beklenen bulgular elle etiketlenir. Bir eşik değiştirildiğin
 | Sürüm | Değişiklik | Test sonucu |
 |---|---|---|
 | 0.1 | Başlangıç değerleri | — (test seti henüz yok) |
+| 0.1 | `agreement_order_max` 0.7 → 0.85; okuma sırası sütun farkındalıklı okumayla karşılaştırılıyor | İki gerçek CV (biri tek, biri iki sütunlu): sırayı koruyan okumalar 0.945–1.000, karıştıran okumalar 0.608–0.707 |
 
 ---
 

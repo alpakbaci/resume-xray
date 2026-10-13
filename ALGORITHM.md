@@ -61,8 +61,16 @@ know. Instead it simulates the three reading strategies used by widely deployed 
 | **Position order** | Text sorted top to bottom, left to right | PDFBox/Tika with `sortByPosition` on, which "can interleave columns" [4] | `pdfplumber` plain text |
 | **Column-aware reading order** | Columns detected first, then read one by one | `pdftotext` default, which tries to "undo" physical layout such as columns [5]; Textkernel's parser, which detects column separators with a trained model [6] | Our own line and gutter detection (2.0, 2.3) |
 
-A problem that breaks one or two strategies is reported as **risky** ("some ATSs"); a problem that
-breaks all of them is reported as **critical**. Each finding names the strategies it affects.
+For DOCX, the question is not order but which parts are read. Word stores headers, footers and
+text boxes apart from the body paragraphs, so resume-xray compares two readings:
+
+| Strategy | What it reads | Basis |
+|---|---|---|
+| **All document parts** | Headers, body, tables, text boxes, footers | What full extractors return, e.g. mammoth reads text boxes as "a separate paragraph that appears after the paragraph containing the text box" [8] |
+| **Body paragraphs only** | Body paragraphs and tables | What `python-docx`'s `document.paragraphs` and `document.tables` return (our observation) |
+
+A problem that breaks some strategies is a **warning** ("some ATSs"); a problem that breaks every
+strategy is **critical**. Each finding names the strategies it affects.
 
 ---
 
@@ -79,8 +87,8 @@ thresholds.
 
 Both formats are converted into one shared representation: lines of text with their page, font
 size, boldness and region (body, header, footer, table, text box). PDF lines also carry their
-position in points. This representation is the column-aware reading of the table above; the
-raw texts of the other two strategies are kept next to it so that checks can compare them.
+position in points and the visual row they belong to. Each page also keeps the full text of every
+reading strategy, so that checks can compare them.
 
 **PDF.** `pdfplumber` gives every word with its coordinates, font name and size. A word joins
 a visual row when its vertical extent overlaps the row's by at least half of the smaller of the
@@ -90,11 +98,10 @@ two heights:
 overlap(word, row) / min(height(word), height(row)) ≥ 0.5
 ```
 
-A row is then split into separate
-lines wherever the gap between two words is wider than `gutter_min_width_pt` (see 2.3), so the
-left and right columns of a two-column page do not merge into one line. A word counts as bold when
-its font name contains Bold, Black, Heavy, Semibold or Demi. The page's raw text, as a simple ATS
-would extract it, comes from `pdfplumber`; `pypdf` reads the same page a second time for 2.4.
+A row is then split into separate lines wherever the gap between two words is wider than
+`gutter_min_width_pt` (see 2.3), so the left and right columns of a two-column page do not merge
+into one line. A word counts as bold when most of its characters come from a font whose name
+contains Bold, Black, Heavy, Semibold or Demi.
 
 *Justification:* Words on one line share most of their height, even when their sizes differ: a
 small glyph such as a bullet sits entirely inside the line (ratio 1.0). Consecutive lines barely
@@ -106,120 +113,157 @@ narrower first. Word boundaries come from character spacing only, never from fon
 
 *Found on a real resume:* An earlier version grouped words whose top edges were within 3 points.
 On one resume the visible bullets were drawn shapes, and an invisible 0.75 pt text bullet sat over
-the first letter of each item, 6.7 points below the line's top. Top-edge grouping moved that bullet
-to the end of the line ("Managed •"); overlap grouping and the narrower-first rule put it back in
-front. The same resume used a separate font subset for the letter İ, and splitting words at font
-changes had turned "TÜBİTAK" into "TÜB İ TAK". See 2.8 for why such bullets are still reported.
+the first letter of each item, on the text's baseline and 6.7 points below the line's top.
+Top-edge grouping moved that bullet to the end of the line ("Managed •"); overlap grouping and the
+narrower-first rule put it back in front. The same resume used a separate font subset for the
+letter İ, and splitting words at font changes had turned "TÜBİTAK" into "TÜB İ TAK".
+
+The three readings of a PDF page are:
+
+- **Content-stream order:** `pypdf`'s `extract_text()`.
+- **Position order:** `pdfplumber`'s `extract_text()`.
+- **Column-aware order:** our lines. Without a gutter (2.3), rows are read top to bottom. With a
+  gutter, lines that cross it split the page into blocks; in a block, the left column is read
+  before the right one when both sides hold at least two rows, otherwise the block is read row by
+  row (this keeps a contact row with items on both sides together).
 
 **DOCX.** `python-docx` gives paragraphs in body order, tables, and each section's header and
 footer. Text boxes are read from the raw XML (`w:txbxContent`), because `python-docx` does not
-expose them. Font size and boldness come from the runs, falling back to the paragraph style. The
-number of columns declared in the section settings (`w:cols`) is kept for 2.3.
+expose them; Word stores each box twice (DrawingML and a VML fallback) and only one copy is read.
+Font size and boldness come from the runs, falling back to the paragraph style. Hyperlink targets
+are collected for 2.7 in both formats.
 
 ### 2.1 Text layer (`min_chars_per_page = 50`)
 
-The number of characters extracted from each page, `n_c`, is computed. If `n_c < 50`, the page is
-a scanned image → **critical**.
+The number of non-whitespace characters on each page, `n_c`, is computed. If `n_c < 50`, the page
+is a scanned image or text converted to outlines → **critical** (it breaks every strategy; only
+an ATS that runs OCR would read it [4]).
 
-*Justification:* A typical resume page contains 1,500–3,000 characters. Below 50 means only
-fragments such as a page number could be extracted.
+*Justification:* A typical resume page contains 1,500–3,000 characters (our observation). Below 50
+means only fragments such as a page number could be extracted.
 
-### 2.2 Garbled character ratio (`garbled_warn = 0.02`, `garbled_critical = 0.10`)
+### 2.2 Garbled characters (`garbled_warn = 0.02`, `garbled_critical = 0.10`)
 
 ```
 g = garbled_characters / total_characters
 ```
 
-Counted as garbled: `(cid:NN)` patterns (fonts without a ToUnicode map), `U+FFFD` (�) and the
-Unicode private use area `U+E000–U+F8FF` (icon fonts).
+Counted as garbled, in the column-aware reading: `(cid:NN)` patterns (fonts without a character
+map), `U+FFFD` (�) and the Unicode private use area `U+E000–U+F8FF` (icon fonts).
 
 - `g > 0.02` → **warning**, `g > 0.10` → **critical**
 
 *Justification:* Up to 2% can come from icons and bullet glyphs without hurting readability.
 Above 10%, words become unreadable.
 
-### 2.3 Multi-column detection (`gutter_min_width_pt = 15`, `gutter_max_coverage = 0.05`, `gutter_min_height = 0.5`, `gutter_x_range = [0.2, 0.8]`)
+### 2.3 Multi-column layout (`gutter_min_width_pt = 15`, `gutter_max_coverage = 0.05`, `gutter_min_height = 0.5`, `gutter_x_range = [0.2, 0.8]`)
 
 The page width is split into 1-point slices. For each slice:
 
 ```
-coverage(x) = lines with a word box crossing the slice / total lines
+coverage(x) = lines whose box crosses the slice / total lines
 ```
 
-If, between 20% and 80% of the page width, there is a continuous channel at least 15 points wide
-with `coverage(x) ≤ 0.05`, **and** that channel runs for at least 50% of the text height, the page
-is considered **multi-column** → **warning**.
+A **gutter** is the widest continuous channel, between 20% and 80% of the page width and at least
+15 points wide, where `coverage(x) ≤ 0.05`, provided the lines on its left and on its right each
+span at least 50% of the page's text height.
+
+On a page with a gutter, the content-stream and position readings are compared with the
+column-aware reading (as in 2.4). The finding is a **warning** naming the strategies that scramble
+the columns, or **info** when every strategy keeps them apart.
 
 *Justification:* The gap between columns is usually wider than 15 points, while the gap between
 words is 3–5 points. The 50% height condition avoids flagging single-column pages that only have
-side-by-side items in the header. The result is **not critical**, because column-aware readers
-handle columns; position-order readers interleave them [4]. Textkernel estimates that at least 15%
-of CVs use columns and describes its earlier rule-based detection of visual gaps, which this
-method resembles [6].
+side-by-side items in the header. Columns are a problem only for readers that interleave them;
+Tika documents that position sorting "can interleave columns" [4]. Textkernel estimates that at
+least 15% of CVs use columns and describes its earlier rule-based detection of visual gaps, which
+this method resembles [6].
 
-### 2.4 Reader agreement (`agreement_bag_min = 0.9`, `agreement_order_max = 0.7`)
+### 2.4 Reading order and lost words (`agreement_order_max = 0.85`)
 
-The PDF is read with both `pdfplumber` and `pypdf`, and the word sequences are compared:
+For each page, the word sequence of each simple reading (content-stream, position) is compared
+with the column-aware reading:
 
 ```
-bag_similarity   = |A ∩ B| / |A ∪ B|              (Jaccard, word sets)
-order_similarity = SequenceMatcher(A, B).ratio()  (word sequences)
+order_similarity = 1 − Indel distance(A, B) / (|A| + |B|)
 ```
 
-If `bag_similarity > 0.9` **and** `order_similarity < 0.7` → **warning**: "reading order is
-ambiguous".
+This is the share of words that appear in the same relative order (2 × longest common
+subsequence / total length), computed with `rapidfuzz`. If `order_similarity < 0.85` on a page
+without a gutter → **warning**: the reader puts the text in a different order than the page shows.
 
-*Justification:* Different ATSs use different PDF readers. If two readers extract the same words
-in a different order, the document is likely to be read scrambled by some systems. This is an
-independent signal supporting 2.3.
+Separately, every word of the column-aware reading that is missing from a simple reading is
+listed → **warning**: a recruiter searching for that word does not find the resume in such ATSs.
+Words are compared after folding (see 2.6), so only real splits count.
 
-### 2.5 Contact info in header/footer (`header_footer_band = 0.08`)
+*Justification:* On the two real resumes measured so far, readings that keep the page's order
+scored 0.95–1.00, while readings that scrambled a two-column page scored 0.61–0.71 (our
+observation, see Calibration). 0.85 separates the two with a margin on both sides. *Found on a
+real resume:* the content-stream reading split "İstanbul" into "İ stanbul" and "TÜBİTAK" into
+"TÜB İ TAK", because the letter İ came from a separate font subset.
 
-- PDF: the top and bottom 8% band of the page height.
-- DOCX: the document's header/footer parts (stored separately from the body in the file).
+### 2.5 Content outside the body (DOCX)
 
-If the email or phone number is found **only** in these areas → **warning**.
+- Email or phone found **only** in a header or footer → **warning** for "body paragraphs only".
+- Any text inside text boxes → **warning** for "body paragraphs only".
 
-*Justification:* Some parsers and libraries (e.g. mammoth, naive python-docx usage) skip headers
-and footers. The fix is easy and the risk is real.
+PDF has no separate header: the top of the page is extracted like any other text, so no finding
+is made for PDF.
 
-### 2.6 Section detection (`heading_max_words = 4`, `heading_size_ratio = 1.15`, `heading_match_min = 85`)
+*Justification:* Headers, footers and text boxes are separate parts of a DOCX file, and readers
+that take only the body paragraphs never see them (see the DOCX strategies in section 1).
 
-A line is a **heading candidate** if:
+### 2.6 Section headings (`heading_max_words = 4`, `heading_size_ratio = 1.15`, `heading_match_min = 85`)
 
-- it has at most 4 words, **and**
-- one of: font size ≥ body median × 1.15, bold, or all caps.
+A line is a **heading candidate** if it has at most 4 words, does not start with a bullet, and at
+least one of: font size ≥ 1.15 × the median word size, bold, all capitals, or a Word heading style.
 
-The candidate is compared against an English/Turkish heading dictionary
-(`rapidfuzz.fuzz.ratio ≥ 85`).
+Candidates are compared with a dictionary of standard English and Turkish headings
+(`resume_xray/data/headings.toml`) using `rapidfuzz.fuzz.ratio ≥ 85`, after **folding**: lowercase,
+`İ`/`I`/`ı` → `i`, other Turkish letters to ASCII (`ş` → `s`, ...), punctuation removed. Folding lets
+"EXPERIENCE", "Experience", "DENEYİM" and "Deneyim" match regardless of the language they were
+lowercased in.
 
-- One of the core sections (experience, education, skills) is not found → **critical**
-- A heading candidate with no match in the dictionary → **warning**, with the closest standard
-  heading suggested (e.g. "My Projects" → "Projects")
+- A core section (experience, education, skills) is not recognized → **warning**.
+- A candidate that is not in the dictionary but has the same style (size, boldness, capitals) as
+  the recognized headings and comes after the first one → **warning**, with the closest standard
+  heading suggested. Requiring the same style keeps the name and bold job titles from being taken
+  for headings.
+- A recognized heading that is not on a line of its own in a reading → **warning** naming those
+  strategies: a parser looking for heading lines does not see it.
 
 *Justification:* Parsers classify sections using heading dictionaries. A threshold of 85 catches
-spelling variants ("Experiences", "Is Deneyimi") while leaving unrelated words out.
+spelling variants ("Experiences", "Language") while leaving unrelated words out. A missing
+section is a warning, not critical: the rest of the resume is still read.
 
-### 2.7 Field extraction
+### 2.7 Contact details and dates (`phone_min_digits = 10`, `phone_max_digits = 15`)
 
-Regular expressions look for: email, phone (Turkish and international formats), LinkedIn URL and
-date ranges (`MM/YYYY`, `Jan 2021`, `Oca 2021`, `2019–2021`, "Present" / "Günümüz").
+Regular expressions look for an email address, a phone number (a run of digits with spaces,
+dots, dashes, parentheses or a leading `+`, holding 10 to 15 digits) and a LinkedIn URL.
 
-- No email at all → **critical**
-- The date of an experience entry cannot be parsed (e.g. "Summer 2021") → **warning**
+- No reading contains an email address → **critical**.
+- A LinkedIn URL exists only as a hyperlink target, not as text → **info**: text extraction
+  returns the visible text, not link targets.
+- A date written with a season or quarter ("Summer 2021", "Yaz 2021", "Q3 2021") → **warning**: it
+  cannot be turned into a month.
 
-### 2.8 Misaligned bullets (`bullet_size_ratio = 0.5`)
+*Justification:* 10 digits is the length of a national number in Turkey and North America; 15 is
+the maximum length of an international number under ITU-T E.164 [9].
 
-A bullet glyph (`•`, `●`, `▪`, `■`, `◦`, `►`, `–`, `-`, `*`) at the start of a line whose font size
-is below half of the line's median font size is reported → **warning**.
+### 2.8 Misplaced bullets (`bullet_size_ratio = 0.5`)
 
-*Justification:* Some resume builders (typically HTML-to-PDF exports) draw the visible bullet as
-a shape and add a tiny, shifted text bullet for copy and paste. Readers that order text by position
-(position order, e.g. `pdfplumber`'s plain text) then put the bullet on its own line after the first
-line of the item, so the next item appears to start in the middle of the previous one. Readers
-that follow the PDF's content stream (like `pypdf`) read it correctly, so the outcome depends on
-which reader an ATS uses. Normally styled bullets are 50–100% of the text size; the case that
-motivated this check was 7.5% (0.75 pt next to 10 pt text).
+For each simple reading, round bullets (`•`, `●`, `▪`, `■`, `◦`, `►`) that are alone on a line or
+not at the start of a line are counted. If any reading has misplaced bullets → **warning** naming
+those readings and how many bullets each misplaced. If the bullets in the column-aware reading are
+smaller than 0.5 × the median size of the rest of their line, the finding explains that the
+bullets are tiny glyphs drawn apart from the text.
+
+*Justification:* Some resume builders (typically HTML-to-PDF exports) draw the visible bullet as a
+shape and add a tiny text bullet for copy and paste. Position-order readers then put the bullet on
+its own line after the first line of the item, so the next item appears to start in the middle of
+the previous one. Content-stream readers read the same file correctly, so the outcome depends on
+which reader an ATS uses. Normally styled bullets are 50–100% of the text size (our observation);
+the case that motivated this check was 7.5% (0.75 pt next to 10 pt text).
 
 ---
 
@@ -326,6 +370,7 @@ test set is re-run and the result is recorded here.
 | Version | Change | Test result |
 |---|---|---|
 | 0.1 | Starting values | — (no test set yet) |
+| 0.1 | `agreement_order_max` 0.7 → 0.85; reading order compared with the column-aware reading | Two real resumes (one single-column, one two-column): order-keeping readings 0.945–1.000, scrambled readings 0.608–0.707 |
 
 ---
 
@@ -349,3 +394,8 @@ Checked on 2026-10-14.
 7. Wilson, K. and Caliskan, A. (2024). *Gender, Race, and Intersectional Bias in Resume Screening
    via Language Model Retrieval.* AAAI/ACM Conference on AI, Ethics, and Society.
    https://arxiv.org/abs/2407.20371
+8. mammoth (Python), README.
+   https://github.com/mwilliamson/python-mammoth
+9. ITU-T, *Recommendation E.164: The international public telecommunication numbering plan*.
+   https://www.itu.int/rec/T-REC-E.164 (the 15-digit limit is summarized at
+   https://en.wikipedia.org/wiki/E.164; the recommendation text itself is not freely shown)
