@@ -21,7 +21,8 @@ application goes unseen:
 2. **Not showing up in search:** recruiters search by skill or job title; if the term is not in
    the resume, the application never appears in the results.
 3. **Knockout questions:** questions on the application form such as work authorization or
-   years of experience (unrelated to the resume text).
+   years of experience (unrelated to the resume text). In Oracle Taleo, for example, "a candidate
+   not meeting the required response can be instantly exited from the application process" [1].
 
 resume-xray measures **points 1 and 2**. It does not measure:
 
@@ -29,7 +30,7 @@ resume-xray measures **points 1 and 2**. It does not measure:
   score; a tool claiming to reproduce one is guessing.
 - The claim that "75% of resumes are rejected by ATS" is a **myth**. It traces back to a 2012 sales
   pitch by Preptel, a resume-optimization company that shut down in 2013, and no methodology was
-  ever published.
+  ever published [2].
 
 ### No single score
 
@@ -41,6 +42,27 @@ failures inside an average. Instead, two separate questions are answered:
 |---|---|---|
 | Can my document be parsed? | `OK` / `Risky` / `Unreadable` | The worst finding wins |
 | Will I be found for this job? | Separate coverage for required and preferred terms | Weighted coverage (section 3) |
+
+### Realistic, not flattering
+
+resume-xray reports what ATS readers actually get, not a cleaned-up version. When a document is
+read correctly only by a smarter reader than an ATS may use, the problem is still reported. Any
+statement here about how ATSs or text extractors behave cites a source in
+[References](#references); statements based on our own measurements say so.
+
+### How ATSs read a PDF
+
+Which text extractor a given commercial ATS uses is not public, so resume-xray does not pretend to
+know. Instead it simulates the three reading strategies used by widely deployed extractors:
+
+| Strategy | What it does | Documented examples | Simulated with |
+|---|---|---|---|
+| **Content-stream order** | Text in the order it is written inside the PDF file | Apache PDFBox and Apache Tika by default ("The default is to not sort by position" [3]; `sortByPosition` defaults to `false` [4]); `pdftotext -raw` [5] | `pypdf` |
+| **Position order** | Text sorted top to bottom, left to right | PDFBox/Tika with `sortByPosition` on, which "can interleave columns" [4] | `pdfplumber` plain text |
+| **Column-aware reading order** | Columns detected first, then read one by one | `pdftotext` default, which tries to "undo" physical layout such as columns [5]; Textkernel's parser, which detects column separators with a trained model [6] | Our own line and gutter detection (2.0, 2.3) |
+
+A problem that breaks one or two strategies is reported as **risky** ("some ATSs"); a problem that
+breaks all of them is reported as **critical**. Each finding names the strategies it affects.
 
 ---
 
@@ -57,7 +79,8 @@ thresholds.
 
 Both formats are converted into one shared representation: lines of text with their page, font
 size, boldness and region (body, header, footer, table, text box). PDF lines also carry their
-position in points. All checks below work only on this representation.
+position in points. This representation is the column-aware reading of the table above; the
+raw texts of the other two strategies are kept next to it so that checks can compare them.
 
 **PDF.** `pdfplumber` gives every word with its coordinates, font name and size. A word joins
 a visual row when its vertical extent overlaps the row's by at least half of the smaller of the
@@ -129,9 +152,10 @@ is considered **multi-column** → **warning**.
 
 *Justification:* The gap between columns is usually wider than 15 points, while the gap between
 words is 3–5 points. The 50% height condition avoids flagging single-column pages that only have
-side-by-side items in the header. The result is **not critical**, because modern commercial
-parsers (e.g. Textkernel) usually handle columns; older and in-house systems may not. This method
-resembles Textkernel's early rule-based column detection.
+side-by-side items in the header. The result is **not critical**, because column-aware readers
+handle columns; position-order readers interleave them [4]. Textkernel estimates that at least 15%
+of CVs use columns and describes its earlier rule-based detection of visual gaps, which this
+method resembles [6].
 
 ### 2.4 Reader agreement (`agreement_bag_min = 0.9`, `agreement_order_max = 0.7`)
 
@@ -191,7 +215,7 @@ is below half of the line's median font size is reported → **warning**.
 
 *Justification:* Some resume builders (typically HTML-to-PDF exports) draw the visible bullet as
 a shape and add a tiny, shifted text bullet for copy and paste. Readers that order text by position
-(like `pdfplumber`'s plain text, and many ATSs) then put the bullet on its own line after the first
+(position order, e.g. `pdfplumber`'s plain text) then put the bullet on its own line after the first
 line of the item, so the next item appears to start in the middle of the previous one. Readers
 that follow the PDF's content stream (like `pypdf`) read it correctly, so the outcome depends on
 which reader an ATS uses. Normally styled bullets are 50–100% of the text size; the case that
@@ -277,7 +301,7 @@ an in-context mention is more valuable is advice about the human reader.
 | Method | Why it is not used |
 |---|---|
 | TF-IDF + cosine | IDF needs many documents to be meaningful; we have 2. The result cannot answer "why?" |
-| Embeddings (sentence-transformers etc.) | A black box; documented name/gender bias (Wilson & Caliskan, AIES 2024); needs a ~1 GB model download. ATS search is word-based, not semantic |
+| Embeddings (sentence-transformers etc.) | A black box; documented name/gender bias [7]; needs a ~1 GB model download. ATS search is word-based, not semantic |
 | LLM | Not deterministic (different results for the same resume); sending the resume out is a privacy risk |
 
 Embeddings may be added later as an **off-by-default** option that only produces "this term may
@@ -302,3 +326,26 @@ test set is re-run and the result is recorded here.
 | Version | Change | Test result |
 |---|---|---|
 | 0.1 | Starting values | — (no test set yet) |
+
+---
+
+## References
+
+Checked on 2026-10-14.
+
+1. Oracle, *Taleo Enterprise: Candidate Prescreening*.
+   https://docs.oracle.com/en/cloud/saas/taleo-enterprise/20b/otrec/candidate-prescreening.html
+2. Lenz, *Fact check: "75% of resumes are rejected by ATS"*.
+   https://lenz.io/c/ats-applicant-tracking-system-75-percent-rejection-rate-bc6fd7d4
+   (secondary source; the original 2012 Preptel material is no longer online)
+3. Apache PDFBox, *PDFTextStripper* Javadoc, `setSortByPosition`.
+   https://pdfbox.apache.org/docs/2.0.13/javadocs/org/apache/pdfbox/text/PDFTextStripper.html
+4. Apache Tika, *PDFParser Configuration* (4.0.x).
+   https://tika.apache.org/docs/4.0.x/configuration/parsers/pdf-parser.html
+5. Poppler, *pdftotext(1)* manual page.
+   https://manpages.debian.org/trixie/poppler-utils/pdftotext.1.en.html
+6. Textkernel, *Improving extraction from column resumes*.
+   https://textkernel.com/learn-support/blog/improving-extraction-from-column-resumes
+7. Wilson, K. and Caliskan, A. (2024). *Gender, Race, and Intersectional Bias in Resume Screening
+   via Language Model Retrieval.* AAAI/ACM Conference on AI, Ethics, and Society.
+   https://arxiv.org/abs/2407.20371

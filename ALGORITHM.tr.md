@@ -21,13 +21,14 @@ gerçek nedeni vardır:
 2. **Aramada çıkmama:** İşe alımcı yetenek veya pozisyon adıyla arama yapar; CV'de o terim
    yoksa başvuru sonuçlarda görünmez.
 3. **Eleme soruları:** Çalışma izni, deneyim yılı gibi formdaki sorular (CV metniyle ilgisi yoktur).
+   Örneğin Oracle Taleo'da gerekli cevabı vermeyen aday başvuru sürecinden anında çıkarılabilir [1].
 
 resume-xray **1. ve 2. maddeyi** ölçer. Ölçmediği şeyler:
 
 - İşe alınıp alınmayacağınızı veya "ATS'nin vereceği puanı". Hiçbir ATS üreticisi böyle bir
   puan yayınlamaz; bunu taklit ettiğini söyleyen bir araç tahmin yürütüyordur.
 - "CV'lerin %75'i ATS tarafından reddedilir" iddiası bir **mittir**. Kaynağı 2012'de kapanmış bir
-  CV optimizasyon şirketinin (Preptel) satış sunumudur ve yöntemi hiç yayınlanmamıştır.
+  CV optimizasyon şirketinin (Preptel) satış sunumudur ve yöntemi hiç yayınlanmamıştır [2].
 
 ### Tek puan yok
 
@@ -39,6 +40,29 @@ hataları ortalamada gizler. Bunun yerine iki ayrı soru cevaplanır:
 |---|---|---|
 | Belgem taranabiliyor mu? | `Uygun` / `Riskli` / `Okunamaz` | En kötü bulgu belirler |
 | İlana göre aranabilir miyim? | Zorunlu ve tercih edilen terimler için ayrı kapsama oranı | Ağırlıklı kapsama (bölüm 3) |
+
+### Gerçekçi, güzelleştirilmemiş
+
+resume-xray, ATS okuyucularının gerçekte elde ettiği metni raporlar, temizlenmiş bir sürümünü
+değil. Bir belge yalnızca bir ATS'nin kullanmayabileceği daha akıllı bir okuyucuyla doğru
+okunabiliyorsa, sorun yine de raporlanır. ATS'lerin veya metin çıkarıcıların davranışına dair her
+ifade [Kaynaklar](#kaynaklar) bölümünde bir kaynağa dayanır; kendi ölçümlerimize dayanan ifadeler
+bunu açıkça belirtir.
+
+### ATS'ler bir PDF'i nasıl okur?
+
+Bir ticari ATS'nin hangi metin çıkarıcıyı kullandığı kamuya açık değildir; resume-xray bunu
+biliyormuş gibi yapmaz. Bunun yerine yaygın kullanılan çıkarıcıların üç okuma stratejisini taklit
+eder:
+
+| Strateji | Ne yapar | Belgelenmiş örnekler | Taklit eden |
+|---|---|---|---|
+| **İçerik akışı sırası** | Metni PDF dosyasının içinde yazıldığı sırayla verir | Apache PDFBox ve Apache Tika varsayılanı (konuma göre sıralama varsayılan olarak kapalı [3], [4]); `pdftotext -raw` [5] | `pypdf` |
+| **Konum sırası** | Metni yukarıdan aşağı, soldan sağa sıralar | `sortByPosition` açık PDFBox/Tika; belgelerine göre sütunları birbirine karıştırabilir [4] | `pdfplumber` düz metni |
+| **Sütun farkındalıklı okuma** | Önce sütunları bulur, sonra sırayla okur | `pdftotext` varsayılanı, sütun gibi fiziksel düzeni "geri almaya" çalışır [5]; Textkernel, sütun ayraçlarını eğitilmiş bir modelle bulur [6] | Kendi satır ve kanal tespitimiz (2.0, 2.3) |
+
+Bir veya iki stratejiyi bozan sorun **riskli** ("bazı ATS'ler") olarak, üçünü de bozan sorun
+**kritik** olarak raporlanır. Her bulgu hangi stratejileri etkilediğini belirtir.
 
 ---
 
@@ -54,7 +78,8 @@ Her kontrol bir **şiddet** üretir: `kritik`, `uyarı` veya `bilgi`. Ağırlık
 
 İki format da ortak bir ara biçime çevrilir: sayfası, font boyutu, kalınlığı ve bölgesi (gövde,
 üst bilgi, alt bilgi, tablo, metin kutusu) bilinen metin satırları. PDF satırları ayrıca punto
-cinsinden konumlarını taşır. Aşağıdaki tüm kontroller yalnızca bu ara biçim üzerinde çalışır.
+cinsinden konumlarını taşır. Bu ara biçim, yukarıdaki tablodaki sütun farkındalıklı okumadır; diğer iki
+stratejinin ham metinleri de kontrollerin karşılaştırabilmesi için yanında tutulur.
 
 **PDF.** `pdfplumber` her kelimeyi koordinatları, font adı ve boyutuyla verir. Bir kelimenin
 dikey alanı, sıranın dikey alanıyla ikisinin küçük yüksekliğinin en az yarısı kadar örtüşüyorsa
@@ -127,9 +152,10 @@ sayfa **çok sütunlu** kabul edilir → **uyarı**.
 
 *Gerekçe:* Sütun arası boşluk genellikle 15 puntodan geniş, kelime arası boşluk 3–5 puntodur.
 %50 yükseklik şartı, yalnızca başlık alanında yan yana öğeler bulunan tek sütunlu sayfaların
-yanlış işaretlenmesini önler. Sonuç **kritik değil**, çünkü modern ticari ayrıştırıcılar
-(ör. Textkernel) sütunları çoğunlukla çözebilir; eski ve kurum içi sistemler ise çözemeyebilir.
-Bu yöntem Textkernel'in ilk dönem kural tabanlı sütun tespitine benzer.
+yanlış işaretlenmesini önler. Sonuç **kritik değil**, çünkü sütun farkındalıklı okuyucular
+sütunları çözer; konum sırası okuyucuları ise karıştırır [4]. Textkernel, CV'lerin en az %15'inin
+sütun kullandığını tahmin eder ve görsel boşlukları bulan eski kural tabanlı yöntemini anlatır; bu
+yöntem ona benzer [6].
 
 ### 2.4 İki okuyucunun uyuşması (`agreement_bag_min = 0.9`, `agreement_order_max = 0.7`)
 
@@ -188,11 +214,11 @@ satırın medyan font boyutunun yarısından küçükse raporlanır → **uyarı
 
 *Gerekçe:* Bazı CV oluşturucular (genellikle HTML'den PDF'e dönüştürenler) görünen madde işaretini
 şekil olarak çizer ve kopyala-yapıştır için küçük, kaydırılmış bir metin madde işareti ekler. Metni
-konuma göre sıralayan okuyucular (`pdfplumber`'ın düz metni ve birçok ATS gibi) bu durumda madde
+konuma göre sıralayan okuyucular (konum sırası, ör. `pdfplumber`'ın düz metni) bu durumda madde
 işaretini maddenin ilk satırından sonra ayrı bir satıra koyar; bir sonraki madde, öncekinin
 ortasında başlıyormuş gibi görünür. PDF'in içerik akışını izleyen okuyucular (`pypdf` gibi) doğru
 okur; yani sonuç ATS'nin kullandığı okuyucuya bağlıdır. Normal biçimlendirilmiş madde işaretleri
-metin boyutunun %50–100'ü kadardır; bu kontrolü doğuran vakada oran %7.5 idi (10 puntoluk metnin
+metin boyutunun %50–100'ü kadardır (kendi gözlemimiz); bu kontrolü doğuran vakada oran %7.5 idi (10 puntoluk metnin
 yanında 0.75 punto).
 
 ---
@@ -275,7 +301,7 @@ değerli olması insan okuyucuya ilişkin bir tavsiyedir.
 | Yöntem | Neden kullanılmıyor |
 |---|---|
 | TF-IDF + cosine | IDF anlamlı olmak için çok sayıda belge ister; elimizde 2 belge var. Sonuç "neden?" sorusuna cevap vermez |
-| Embedding (sentence-transformers vb.) | Kara kutu; belgelenmiş isim/cinsiyet önyargısı var (Wilson & Caliskan, AIES 2024); ~1 GB model indirmesi gerekir. ATS araması anlamsal değil, kelime bazlıdır |
+| Embedding (sentence-transformers vb.) | Kara kutu; belgelenmiş isim/cinsiyet önyargısı var [7]; ~1 GB model indirmesi gerekir. ATS araması anlamsal değil, kelime bazlıdır |
 | LLM | Deterministik değil (aynı CV'ye farklı sonuç), CV'nin dışarı gönderilmesi gizlilik riski taşır |
 
 İleride embedding, yalnızca "şu terim de yakın olabilir" önerisi üreten, **varsayılan olarak
@@ -299,3 +325,9 @@ Her belge için beklenen bulgular elle etiketlenir. Bir eşik değiştirildiğin
 | Sürüm | Değişiklik | Test sonucu |
 |---|---|---|
 | 0.1 | Başlangıç değerleri | — (test seti henüz yok) |
+
+---
+
+## Kaynaklar
+
+Kaynak listesi İngilizce belgeyle aynıdır: [ALGORITHM.md#references](ALGORITHM.md#references).
