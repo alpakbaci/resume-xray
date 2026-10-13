@@ -11,6 +11,7 @@ from resume_xray.match import MatchReport, match_job
 from resume_xray.models import STRATEGY_NAMES, Document
 from resume_xray.readers import UnsupportedFormat, read_document
 from resume_xray.report import Report
+from resume_xray.text import decode_text
 
 STRATEGY_SOURCES = {
     "stream": "pypdf; like Apache Tika and PDFBox with default settings",
@@ -30,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("resume", nargs="?", help="resume file (.pdf or .docx)")
     parser.add_argument("--job", metavar="FILE", help="job description as a text file")
+    parser.add_argument("--title", help="job title, if the job description does not start with it")
     parser.add_argument("--raw", action="store_true", help="show the text each reading strategy extracts")
     parser.add_argument("--json", action="store_true", help="print the report as JSON")
     return parser
@@ -53,12 +55,12 @@ def main(argv: list[str] | None = None) -> int:
     match = None
     if args.job:
         try:
-            with open(args.job, encoding="utf-8") as f:
-                job_text = f.read()
+            with open(args.job, "rb") as f:
+                job_text = decode_text(f.read())
         except OSError as error:
             print(f"resume-xray: {error}", file=sys.stderr)
             return 2
-        match = match_job(document, job_text, report.section_lines)
+        match = match_job(document, job_text, report.section_lines, args.title)
     if args.json:
         data = {**asdict(report), "verdict": report.verdict}
         data.pop("section_lines", None)
@@ -120,7 +122,9 @@ def format_match(match: MatchReport) -> str:
                 line += f"  (not found in {', '.join(STRATEGY_NAMES[s] for s in t.lost_in)})"
             out.append(line)
     out.append("")
-    if match.job_title:
+    if not match.job_title:
+        out.append('Job title: not found in the job description; pass it with --title "..."')
+    else:
         out.append(
             f'Job title: found in "{match.title_match}"' if match.title_match
             else f'Job title: "{match.job_title}" does not appear in the resume'

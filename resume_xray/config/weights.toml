@@ -46,5 +46,12 @@ word_form_match = 0.5
 # 3.4 Match level m_t when only a synonym is present.
 synonym_match = 0.5
 
+# 3.2 The job's first line is its title only if it has at most this many words.
+title_max_words = 8
+
+# 3.4 A one-word wording matches another form of the word only if their lengths differ by at most
+# this many letters (roadmap / roadmaps, but not Excel / Excellent).
+word_form_max_extra = 2
+
 # 3.6 Job title found in a resume line when token_set_ratio reaches this.
 title_match_min = 85

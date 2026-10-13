@@ -304,7 +304,14 @@ the systems we checked, such matches get partial credit and an explanation inste
 | (none yet) | Text before the first heading | Treated as required |
 
 A line containing a preference cue ("is a plus", "preferred", "tercih sebebidir", ...) makes its
-terms preferred in any section. The first line that is not a heading is taken as the **job title**.
+terms preferred in any section.
+
+**Job title** (`title_max_words = 8`): the first line of the job description, if it comes before any
+section heading and has at most 8 words. Otherwise the job description has no title line (many
+start with "About the Role" and a sentence), and the user can give it with `--title`.
+
+*Justification:* Job titles are short ("Senior Backend Developer", "Kıdemli Proje Yöneticisi"); a
+longer first line is a sentence, not a title.
 
 **Terms.**
 
@@ -312,8 +319,18 @@ terms preferred in any section. The first line that is not a heading is taken as
   it (`Kubernetes`, `K8s`). The job is searched by **stem**, longest wordings first, without
   overlaps, so "React Native" is not also counted as "React". The wording the job actually used is
   kept. Wordings of one or two characters (`R`, `C`, `Go`, `UI`) must also match capitals.
-- **Technical-looking words** not in the dictionary: words with a letter and a digit, `+` or `#`, or
-  CamelCase (`PostgreSQL`, `ISO27001`, `iOS`).
+- **Technical-looking words** not in the dictionary: words with a letter and a digit, `+` or `#`,
+  CamelCase (`PostgreSQL`, `ISO27001`, `iOS`), or acronyms of two or more capital letters
+  (`ARPU`, `LTV`, `AI`).
+
+**One-word stems** (`word_form_max_extra = 2`): a one-word wording matches another form of the
+word only if their lengths differ by at most 2 letters. This applies to the job and the resume
+alike.
+
+*Justification:* Plural and short inflected forms differ by one or two letters ("roadmap" /
+"roadmaps", "Liderlik" / "Liderliği"), but stemming also merges unrelated words: Snowball reduces
+both "Excel" and "Excellent" to "excel". *Found on a real job description:* "Excellent
+communication skills" was taken as a requirement for Excel.
 
 ### 3.3 Term weight (`required_weight = 1.0`, `preferred_weight = 0.5`)
 

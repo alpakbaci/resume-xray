@@ -307,7 +307,14 @@ yeni bir bölüm başlatır:
 | (henüz yok) | İlk başlıktan önceki metin | Zorunlu sayılır |
 
 Tercih ifadesi ("is a plus", "preferred", "tercih sebebidir", ...) içeren bir satırdaki terimler,
-hangi bölümde olursa olsun tercihli sayılır. Başlık olmayan ilk satır **pozisyon adı** kabul edilir.
+hangi bölümde olursa olsun tercihli sayılır.
+
+**Pozisyon adı** (`title_max_words = 8`): ilanın ilk satırı, herhangi bir bölüm başlığından önce
+geliyor ve en fazla 8 kelimeyse. Aksi halde ilanın bir başlık satırı yoktur (birçoğu "About the
+Role" ve bir cümleyle başlar); kullanıcı pozisyon adını `--title` ile verebilir.
+
+*Gerekçe:* Pozisyon adları kısadır ("Senior Backend Developer", "Kıdemli Proje Yöneticisi"); daha
+uzun bir ilk satır başlık değil cümledir.
 
 **Terimler.**
 
@@ -315,8 +322,17 @@ hangi bölümde olursa olsun tercihli sayılır. Başlık olmayan ilk satır **p
   yazımlarını listeler (`Kubernetes`, `K8s`). İlan **kök** ile, en uzun yazımlar önce ve örtüşmeden
   taranır; böylece "React Native" ayrıca "React" sayılmaz. İlanın kullandığı yazım saklanır. Bir
   veya iki karakterli yazımlar (`R`, `C`, `Go`, `UI`) büyük/küçük harf olarak da eşleşmelidir.
-- **Sözlükte olmayan teknik görünümlü kelimeler:** harfle birlikte rakam, `+` veya `#` içeren ya da
-  CamelCase yazılan kelimeler (`PostgreSQL`, `ISO27001`, `iOS`).
+- **Sözlükte olmayan teknik görünümlü kelimeler:** harfle birlikte rakam, `+` veya `#` içeren,
+  CamelCase yazılan (`PostgreSQL`, `ISO27001`, `iOS`) ya da en az iki büyük harften oluşan
+  kısaltmalar (`ARPU`, `LTV`, `AI`).
+
+**Tek kelimelik kökler** (`word_form_max_extra = 2`): tek kelimelik bir yazım, kelimenin başka bir
+biçimiyle ancak uzunlukları en fazla 2 harf farklıysa eşleşir. Bu kural ilan ve CV için aynıdır.
+
+*Gerekçe:* Çoğul ve kısa çekimli biçimler bir iki harf farklıdır ("roadmap" / "roadmaps",
+"Liderlik" / "Liderliği"); ama kök bulma alakasız kelimeleri de birleştirir: Snowball hem "Excel"
+hem "Excellent" kelimesini "excel" köküne indirir. *Gerçek bir ilanda bulundu:* "Excellent
+communication skills", Excel gereksinimi sanılmıştı.
 
 ### 3.3 Terim ağırlığı (`required_weight = 1.0`, `preferred_weight = 0.5`)
 

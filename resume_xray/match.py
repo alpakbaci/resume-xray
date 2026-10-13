@@ -21,7 +21,7 @@ Level = Literal["exact", "word_form", "synonym", "missing"]
 
 TOKEN = re.compile(r"\.?\w[\w+#.&]*")
 APOSTROPHE_SUFFIX = re.compile(r"(?<=\w)['’]\w+")
-TECHNICAL = re.compile(r"(?=.*[a-zA-Z])(?:.*[\d+#]|.*[a-z][A-Z])")
+TECHNICAL = re.compile(r"(?=.*[a-zA-Z])(?:.*[\d+#]|.*[a-z][A-Z])|[A-Z]{2,}$")
 _ASCII = str.maketrans({"ı": "i", "ğ": "g", "ş": "s", "ç": "c", "ö": "o", "ü": "u", "â": "a", "î": "i", "û": "u"})
 STOPWORDS = {
     "en": {"the", "and", "with", "for", "of", "to", "in", "a", "an", "is", "are", "you", "we", "our", "will", "be", "on", "as", "or", "your"},
@@ -86,17 +86,23 @@ def span_text(text: str, tokens: list[Token]) -> str:
 
 def find(tokens: list[Token], pattern: list[Token], by: str) -> list[int]:
     """Start positions where `pattern` occurs in `tokens`, comparing surface or stem keys.
-    A one-token pattern of at most two characters must also match its capitals."""
+    A one-token pattern of at most two characters must also match its capitals; a one-token
+    pattern compared by stem must be close in length (word_form_max_extra)."""
     n = len(pattern)
     if not n:
         return []
     strict = n == 1 and len(pattern[0].original) <= 2
+    max_extra = load_weights()["match"]["word_form_max_extra"]
     hits = []
     for i in range(len(tokens) - n + 1):
         window = tokens[i : i + n]
-        if all(getattr(a, by) == getattr(b, by) for a, b in zip(window, pattern)):
-            if not strict or window[0].original == pattern[0].original:
-                hits.append(i)
+        if not all(getattr(a, by) == getattr(b, by) for a, b in zip(window, pattern)):
+            continue
+        if strict and window[0].original != pattern[0].original:
+            continue
+        if by == "stem" and n == 1 and abs(len(window[0].surface) - len(pattern[0].surface)) > max_extra:
+            continue
+        hits.append(i)
     return hits
 
 
@@ -151,13 +157,13 @@ def section_kind(line: str, weights: dict) -> str | None:
     return best_kind if best >= weights["heading_match_min"] else None
 
 
-def parse_job(text: str) -> JobDescription:
+def parse_job(text: str, title: str | None = None) -> JobDescription:
     weights = load_weights()
     pw, mw = weights["parseability"], weights["match"]
     language = detect_language(text)
     cues = [fold(c) for c in _data("job_sections.toml")["preferred_cues"]]
     section = "required"
-    title = None
+    seen_heading = False
     counted: list[tuple[str, float]] = []
     for raw in text.splitlines():
         line = raw.strip()
@@ -165,9 +171,9 @@ def parse_job(text: str) -> JobDescription:
             continue
         kind = section_kind(line, pw)
         if kind:
-            section = kind
+            section, seen_heading = kind, True
             continue
-        if title is None:
+        if title is None and not counted and not seen_heading and len(line.split()) <= mw["title_max_words"]:
             title = line
         if section == "ignored":
             continue
@@ -235,10 +241,10 @@ class MatchReport:
     degree_in_resume: str | None = None
 
 
-def match_job(document: Document, job_text: str, sections: dict[str, Line]) -> MatchReport:
+def match_job(document: Document, job_text: str, sections: dict[str, Line], title: str | None = None) -> MatchReport:
     weights = load_weights()
     mw = weights["match"]
-    job = parse_job(job_text)
+    job = parse_job(job_text, title)
     reference = document.reading("columns" if document.kind == "pdf" else "full") or ""
     language = detect_language(reference)
     resume = analyze(reference, language)

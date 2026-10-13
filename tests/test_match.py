@@ -7,6 +7,7 @@ from resume_xray.checks import run_checks
 from resume_xray.match import _degree, analyze, detect_language, lower, match_job, parse_job
 from resume_xray.models import Document, Page
 from resume_xray.readers import read_document
+from resume_xray.text import decode_text
 
 JOB = """Senior Backend Developer
 
@@ -121,3 +122,32 @@ def test_term_lost_in_a_reading():
 )
 def test_degrees(text, lowest, expected):
     assert _degree(text, lowest) == expected
+
+
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        ("We’re hiring: Kıdemli Yazılımcı".encode("utf-8"), "We’re hiring: Kıdemli Yazılımcı"),
+        ("We’re hiring".encode("utf-8-sig"), "We’re hiring"),
+        ("We’re hiring".encode("utf-16"), "We’re hiring"),
+        # macOS pbpaste without a UTF-8 locale writes Mac Roman (seen on a real job description).
+        ("We’re looking for a Product Manager".encode("mac_roman"), "We’re looking for a Product Manager"),
+        ("Aranan nitelikler: iş deneyimi, İngilizce".encode("cp1254"), "Aranan nitelikler: iş deneyimi, İngilizce"),
+    ],
+)
+def test_decode_text(data, expected):
+    assert decode_text(data) == expected
+
+
+def test_real_job_description_quirks():
+    # From a real job description: no title line, headings with curly apostrophes, "Excellent".
+    job = parse_job(
+        "About the Role\nWe’re looking for a Mid/Senior Product Manager to help us build AI products.\n"
+        "What You’ll Do\n* Improve ARPU and LTV.\n* Excellent communication skills.\n"
+    )
+    names = {t.name for t in job.terms}
+    assert job.title is None
+    assert "Excel" not in names
+    assert {"AI", "ARPU", "LTV"} <= names
+    assert parse_job("Senior Backend Developer\nRequirements\nPython\n").title == "Senior Backend Developer"
+    assert parse_job("Requirements\nPython\n", title="Data Engineer").title == "Data Engineer"
