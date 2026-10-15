@@ -20,7 +20,8 @@ import tomllib
 import webbrowser
 from datetime import date
 from pathlib import Path
-from threading import Timer
+from functools import lru_cache
+from threading import Lock, Timer
 
 import pypdfium2
 import uvicorn
@@ -59,6 +60,29 @@ DESCRIBE = [
 ]
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+# PDFium is not thread-safe, and the browser asks for all pages of a resume at once. Rendering two
+# pages in parallel crashed the server (segmentation fault), so every PDFium call goes through one
+# lock, and each resume is rendered only once.
+PDFIUM = Lock()
+
+
+@lru_cache(maxsize=8)
+def rendered_pages(path: Path, modified: float) -> tuple[bytes, ...]:
+    with PDFIUM:
+        document = pypdfium2.PdfDocument(str(path))
+        try:
+            images = []
+            for page in document:
+                buffer = io.BytesIO()
+                page.render(scale=1.6).to_pil().save(buffer, "PNG")
+                images.append(buffer.getvalue())
+            return tuple(images)
+        finally:
+            document.close()
+
+
+def pages_of(path: Path) -> tuple[bytes, ...]:
+    return rendered_pages(path, path.stat().st_mtime)
 
 
 def resumes() -> list[Path]:
@@ -109,12 +133,10 @@ def index() -> str:
 
 @app.get("/page/{name}/{number}.png")
 def page_image(name: str, number: int) -> Response:
-    document = pypdfium2.PdfDocument(str(resume(name)))
-    if not 0 <= number < len(document):
+    images = pages_of(resume(name))
+    if not 0 <= number < len(images):
         raise HTTPException(404)
-    buffer = io.BytesIO()
-    document[number].render(scale=1.6).to_pil().save(buffer, "PNG")
-    return Response(buffer.getvalue(), media_type="image/png")
+    return Response(images[number], media_type="image/png")
 
 
 @app.get("/open/{name}")
@@ -129,7 +151,7 @@ def label_form(name: str) -> str:
     kind = path.suffix.lower().lstrip(".")
     answers = saved_answers(path)
     if kind == "pdf":
-        count = len(pypdfium2.PdfDocument(str(path)))
+        count = len(pages_of(path))
         view = "".join(f'<img src="/page/{html.escape(name)}/{i}.png" alt="Page {i + 1}">' for i in range(count))
     else:
         view = f'<p><a href="/open/{html.escape(name)}">Open in Word</a> and look at the document there.</p>'
