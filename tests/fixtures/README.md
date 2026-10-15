@@ -48,6 +48,19 @@ cannot be committed: they hold personal data and their templates are often copyr
 in `~/resume-xray-private/` (or the folder named by `RESUME_XRAY_PRIVATE`), each with a label.
 `pytest` checks them when the folder exists, and nowhere else.
 
+They are a **hold-out set**, labeled blind:
+
+1. Label first: `python tools/label.py` shows each resume next to questions anyone can answer by
+   looking at it (is the text selectable, how many columns, which headings, is the email written
+   out...). It never runs resume-xray, so the label cannot copy the tool's answer.
+2. Never tune a threshold on these files. They only measure how often the tool agrees with a person.
+3. When the tool and a label disagree, decide who is right from the page image and the raw readings
+   (`resume-xray FILE --raw`). A tool error is fixed and recorded in the calibration table as found on
+   a real resume; a label error is corrected with a note saying why.
+
+With n resumes and no disagreement, the error rate is below about 3/n at 95% confidence (the rule
+of three): 20 resumes support "below 15%", 30 support "below 10%".
+
 ## Calibration
 
 ```bash
