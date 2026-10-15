@@ -2,6 +2,7 @@
 
 import re
 import tomllib
+from collections import Counter
 from functools import cache
 from importlib.resources import files
 from statistics import median
@@ -329,6 +330,8 @@ def heading_candidates(document: Document, weights: dict) -> list[Line]:
         if not words or len(words) > weights["heading_max_words"] or line.text[0] in BULLETS:
             continue
         letters = [c for c in line.text if c.isalpha()]
+        if not fold(line.text).strip() or len(letters) < 2:
+            continue  # years, symbols and single letters are not headings
         styled = (
             line.bold
             or (letters and all(c.isupper() for c in letters))
@@ -357,12 +360,27 @@ def check_sections(document: Document, weights: dict) -> tuple[dict[str, Line], 
             unmatched.append((line, closest))
 
     findings = []
-    heading_styles = {_style(line) for line in sections.values()}
+    # The heading tier is the style most recognized headings share; a single heading in another
+    # style (a smaller one in a sidebar) does not widen it.
+    style_counts = Counter(_style(line) for line in sections.values())
+    top = max(style_counts.values(), default=0)
+    heading_styles = {style for style, count in style_counts.items() if count == top}
+
+    def styled_like_heading(line: Line) -> bool:
+        """Same boldness and capitals as a recognized heading, and a size within heading_size_ratio
+        of it: the same tier of the hierarchy (12 and 13 pt yes, a 37 pt name no)."""
+        size, bold, caps = _style(line)
+        ratio = weights["heading_size_ratio"]
+        return any(
+            bold == b and caps == c and (size == s if not (size and s) else max(size, s) / min(size, s) < ratio)
+            for s, b, c in heading_styles
+        )
+
     first = min((document.lines.index(l) for l in sections.values()), default=None)
     unknown = [
         (line, closest)
         for line, closest in unmatched
-        if _style(line) in heading_styles and first is not None and document.lines.index(line) > first
+        if styled_like_heading(line) and first is not None and document.lines.index(line) > first
     ]
     if unknown:
         findings.append(

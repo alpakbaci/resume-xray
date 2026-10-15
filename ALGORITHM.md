@@ -189,8 +189,10 @@ A **gutter** is an empty vertical channel between two columns:
 1. Between 20% and 80% of the page width, the page is scanned in 1-point slices. A channel is a
    run of slices, at least 8 points wide, that share one vertical stretch of at least 50% of the
    page's text height which no line crosses.
-2. The channel separates two columns when, within that stretch, each side holds a column of
-   **left-aligned text**: at least two rows that start at the same x and end at different x.
+2. The channel separates two columns when each side holds **running text**: at least three lines
+   stacked like a paragraph, each starting less than its own height below the previous one. A line
+   is on a side when it does not reach across the channel into the other column; lines above or
+   below the empty stretch count too (a sidebar's name, a column's first heading).
 3. The widest such channel is the gutter.
 
 On a page with a gutter, a reading **scrambles the columns** when its word order differs from the
@@ -201,8 +203,9 @@ scramble the columns, or **info** when every strategy keeps them apart.
 *Justification:* Measured gutters in the test set are 14 to 53 points wide (a Word table used as a
 layout has the narrowest), while the gap between words is 3–5 points; 8 points separates the two.
 Requiring the empty stretch rather than a share of all lines lets a full-width header (name,
-contact, summary) sit above the columns. The left-alignment condition tells a column from a stack
-of right-aligned dates ("Jan 2021 – Present"), which end at the same x and start at different x.
+contact, summary) sit above the columns. The running-text condition tells a column from the
+right-aligned dates of a single-column page ("Jan 2021 – Present"), which are single lines spread
+between the bullets they head.
 Columns are a problem only for readers that interleave them; Tika documents that position sorting
 "can interleave columns" [4]. Textkernel estimates that at least 15% of CVs use columns and
 describes its earlier rule-based detection of visual gaps, which this method resembles [6].
@@ -210,7 +213,9 @@ describes its earlier rule-based detection of visual gaps, which this method res
 *Found while testing:* the first version required that at most 5% of all lines cross the channel
 and that each side span 50% of the text height. It missed Word's two-column and table layouts
 (the header crossed the channel; the right column was short) and, once relaxed, took right-aligned
-dates for a column. With a narrow right column (one skill per row), position order glued each
+dates for a column. A left-alignment test fixed that, but a real resume's sidebar was
+right-aligned and its columns were missed (blind hold-out); the running-text test handles both.
+With a narrow right column (one skill per row), position order glued each
 skill to the end of an experience line yet kept 85% of the word order; the side-by-side test
 catches this case.
 
@@ -262,12 +267,19 @@ words ("Relevant Work Experience" contains "Work Experience", "Additional Skills
 "Skills"); the longest contained wording wins.
 
 - A core section (experience, education, skills) is not recognized → **warning**.
-- A candidate that is not in the dictionary but has the same style (size, boldness, capitals) as
-  the recognized headings and comes after the first one → **warning**, with the closest standard
-  heading suggested. Requiring the same style keeps the name and bold job titles from being taken
-  for headings.
+- A candidate that is not in the dictionary, has at least two letters, comes after the first
+  recognized heading and is styled like the recognized headings → **warning**, with the closest
+  standard heading suggested. "Styled like" means the same boldness and capitals as the style most
+  recognized headings share, and a size within `heading_size_ratio` of it. This keeps the name and
+  bold job titles from being taken for headings, while a 13 pt heading among 12 pt ones still
+  counts.
 - A recognized heading that is not on a line of its own in a reading → **warning** naming those
   strategies: a parser looking for heading lines does not see it.
+
+*Found on real resumes:* requiring exactly the same size missed a 13 pt "Positions of
+responsibility" among 12 pt headings; taking every recognized heading's style let one 9 pt heading
+in a sidebar make 10 pt bold university names look like headings. The dictionary now also has
+singular forms (Skill, Yetenek, Beceri) and the Turkish "Sertifikasyon" and "Dersler".
 
 *Justification:* Parsers classify sections using heading dictionaries. A threshold of 85 catches
 spelling variants ("Experiences", "Language") while leaving unrelated words out. *Found on real
@@ -476,6 +488,7 @@ test set is re-run and the result is recorded here.
 | 0.1 | `agreement_order_max` 0.7 → 0.85; reading order compared with the column-aware reading | Two real resumes (one single-column, one two-column): order-keeping readings 0.945–1.000, scrambled readings 0.608–0.707 |
 | 0.1 | Synthetic test set of 23 resumes (`tests/fixtures/synthetic/`, made with Chrome and Word). Words built from characters (`word_gap_pt` 3); scans need a picture (`scan_image_coverage` 0.5, `outline_min_curves` 200); gutter redefined as an empty channel beside left-aligned text, `gutter_min_width_pt` 15 → 8, `gutter_max_coverage` removed | All 23 agree with their labels. Gutters found in all 6 two-column PDFs (14–53 pt) and in none of the single-column ones; order of readings that keep the page's order 0.97–1.00 |
 | 0.1 | **First blind hold-out, before any change:** 22 real and template resumes (by the labels: Canva 11, Overleaf 5, Google Docs 4, job sites 2; 11 English, 11 Turkish) labeled by the maintainer without seeing resume-xray's results | 164 of 204 expectations agree (80%); 4 of 22 resumes agree fully. Disagreements: 13 from the labeling tool (it expected sections and an email in image-only PDFs), 4 from a question that listed only five standard headings, the rest from heading matching (headings with an extra word such as "Relevant Work Experience"), "Eğitimler" mapped to courses, and words joined in LaTeX PDFs. This set is no longer blind after the fixes below |
+| 0.1 | **Same 22 resumes after the fixes (not blind):** heading matching by whole words, "Eğitimler", singular and Turkish heading forms, heading tier from the majority style, word gap 15% of the font size, columns as running text on both sides; 11 labels re-answered after the label questions were clarified | 21 of 22 resumes agree fully. The remaining one waits for the labeler to confirm a layout answer. A fresh blind set is needed for an unbiased number |
 
 ---
 

@@ -35,19 +35,22 @@ def find_gutter(lines: list[Line], page_width: float, weights: dict) -> Gutter |
         return [g for g in out if g[1] - g[0] >= need]
 
     def is_column(side: list[Line]) -> bool:
-        """At least two rows that start at the same x and end at different x: left-aligned text.
-        A stack of right-aligned dates ends at the same x and starts at different x."""
-        starts: dict[int, list[Line]] = {}
-        for line in side:
-            starts.setdefault(round(line.bbox[0]), []).append(line)
-        return any(
-            len({l.row for l in group}) >= 2 and len({round(l.bbox[2]) for l in group}) >= 2
-            for group in starts.values()
-        )
+        """Running text: at least three lines stacked like a paragraph, each starting less than its
+        own height below the previous one. Right-aligned dates on a single-column page are single
+        lines spread between the bullets they head, so they never form such a stack."""
+        stack = sorted(side, key=lambda l: l.bbox[1])
+        run = 1
+        for above, below in zip(stack, stack[1:]):
+            height = above.bbox[3] - above.bbox[1]
+            run = run + 1 if below.bbox[1] - above.bbox[3] < height else 1
+            if run >= 3:
+                return True
+        return False
 
     def separates(g: Gutter) -> bool:
-        within = [l for l in placed if l.bbox[1] < g.y1 and l.bbox[3] > g.y0]
-        return is_column([l for l in within if l.bbox[2] <= g.x0]) and is_column([l for l in within if l.bbox[0] >= g.x1])
+        # A column's text may run above or below the empty stretch (a sidebar's name, a heading),
+        # so every line on that side of the channel counts.
+        return is_column([l for l in placed if side(l, g) == "left"]) and is_column([l for l in placed if side(l, g) == "right"])
 
     candidates: list[Gutter] = []
     run_x0, run_free = None, []

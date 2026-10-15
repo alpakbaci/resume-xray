@@ -186,8 +186,10 @@ fontlar), `U+FFFD` (�) ve Unicode özel kullanım alanı `U+E000–F8FF` (ikon
 1. Sayfa genişliğinin %20–%80 aralığı 1 puntoluk dilimlerle taranır. Kanal, en az 8 punto genişliğinde
    ve hiçbir satırın kesmediği, sayfanın metin yüksekliğinin en az %50'si kadar ortak bir dikey
    aralığı paylaşan ardışık dilimlerdir.
-2. Bu dikey aralıkta her iki yanda da **sola yaslı metin** sütunu varsa kanal iki sütunu ayırır:
-   aynı x konumunda başlayıp farklı x konumlarında biten en az iki sıra.
+2. Her iki yanda da **akan metin** varsa kanal iki sütunu ayırır: bir paragraf gibi alt alta duran,
+   her biri bir öncekinin altına kendi yüksekliğinden daha yakın başlayan en az üç satır. Kanalı
+   aşıp öbür sütuna uzanmayan satır o taraftadır; boş aralığın üstünde veya altında kalan satırlar da
+   sayılır (kenar çubuğundaki isim, sütunun ilk başlığı).
 3. Bu tür kanalların en genişi sütun aralığıdır.
 
 Kanalı olan bir sayfada bir okuma, kelime sırası sütun farkındalıklı okumadan farklıysa (2.4'teki
@@ -198,8 +200,9 @@ karıştırmıyorsa **bilgi** olur.
 *Gerekçe:* Test setinde ölçülen sütun aralıkları 14 ile 53 punto arasındadır (en darı, düzen için
 kullanılan bir Word tablosu); kelime arası boşluk ise 3–5 puntodur; 8 punto ikisini ayırır. Tüm
 satırların bir payı yerine boş bir dikey aralık aramak, sütunların üstünde tam genişlikte bir başlık
-bloğuna (isim, iletişim, özet) izin verir. Sola yaslılık şartı, bir sütunu sağa yaslı tarihlerden
-("Jan 2021 – Present") ayırır; tarihler aynı x'te biter, farklı x'lerde başlar. Sütunlar yalnızca
+bloğuna (isim, iletişim, özet) izin verir. Akan metin şartı, bir sütunu tek sütunlu sayfadaki sağa yaslı
+tarihlerden ("Jan 2021 – Present") ayırır; tarihler, başlık oldukları madde işaretlerinin arasına
+dağılmış tek satırlardır. Sütunlar yalnızca
 onları karıştıran okuyucular için sorundur; Tika, konuma göre sıralamanın "sütunları birbirine
 karıştırabileceğini" belgeler [4]. Textkernel, CV'lerin en az %15'inin sütun kullandığını tahmin eder
 ve görsel boşlukları bulan eski kural tabanlı yöntemini anlatır; bu yöntem ona benzer [6].
@@ -207,7 +210,9 @@ ve görsel boşlukları bulan eski kural tabanlı yöntemini anlatır; bu yönte
 *Test sırasında bulundu:* ilk sürüm, kanalı kesen satırların tüm satırların en fazla %5'i olmasını ve
 her iki yanın metin yüksekliğinin %50'sini kaplamasını istiyordu. Word'ün iki sütun ve tablo
 düzenlerini kaçırıyordu (başlık kanalı kesiyordu; sağ sütun kısaydı), gevşetildiğinde de sağa yaslı
-tarihleri sütun sanıyordu. Dar bir sağ sütunda (her satırda bir yetenek), konum sırası her yeteneği
+tarihleri sütun sanıyordu. Bir sola yaslılık testi bunu düzeltti, ama gerçek bir CV'nin kenar çubuğu
+sağa yaslıydı ve sütunları kaçırıldı (kör doğrulama seti); akan metin testi ikisini de karşılar.
+Dar bir sağ sütunda (her satırda bir yetenek), konum sırası her yeteneği
 bir deneyim satırının sonuna yapıştırdı ama kelime sırasının %85'ini korudu; yan yana birleşme testi
 bu durumu yakalar.
 
@@ -261,11 +266,18 @@ yazımlarından birini bütün kelimeler olarak içeriyorsa da o bölümle eşle
 "Work Experience"ı, "Additional Skills" "Skills"i içerir); içerilen en uzun yazım kazanır.
 
 - Temel bir bölüm (deneyim, eğitim, yetenekler) tanınmadı → **uyarı**.
-- Sözlükte olmayan ama tanınan başlıklarla aynı stile (boyut, kalınlık, büyük harf) sahip ve ilk
-  tanınan başlıktan sonra gelen aday → **uyarı** ve en yakın standart başlık önerisi. Aynı stil
-  şartı, ismin ve kalın iş unvanlarının başlık sanılmasını önler.
+- Sözlükte olmayan, en az iki harf içeren, ilk tanınan başlıktan sonra gelen ve tanınan başlıklar
+  gibi biçimlendirilmiş aday → **uyarı** ve en yakın standart başlık önerisi. "Gibi biçimlendirilmiş",
+  tanınan başlıkların çoğunun paylaştığı biçimle aynı kalınlık ve büyük harf, ve ona
+  `heading_size_ratio` içinde bir boyut demektir. Bu, ismin ve kalın iş unvanlarının başlık
+  sanılmasını önler; 12 puntoluk başlıklar arasındaki 13 puntoluk bir başlık ise yine sayılır.
 - Bir okumada kendi satırında olmayan tanınmış başlık → o stratejileri belirten **uyarı**: başlık
   satırı arayan bir ayrıştırıcı onu görmez.
+
+*Gerçek CV'lerde bulundu:* birebir aynı boyut şartı, 12 puntoluk başlıklar arasındaki 13 puntoluk
+"Positions of responsibility"yi kaçırıyordu; her tanınan başlığın biçimini almak ise kenar çubuğundaki
+9 puntoluk tek bir başlık yüzünden 10 puntoluk kalın üniversite adlarını başlık gibi gösteriyordu.
+Sözlükte artık tekil biçimler (Skill, Yetenek, Beceri) ile Türkçe "Sertifikasyon" ve "Dersler" de var.
 
 *Gerekçe:* Ayrıştırıcılar bölümleri başlık sözlükleriyle sınıflandırır. 85 eşiği yazım farklarını
 ("Experiences", "Language") yakalarken alakasız kelimeleri dışarıda bırakır. *Gerçek CV'lerde bulundu:*
@@ -476,6 +488,7 @@ Her belge için beklenen bulgular elle etiketlenir. Bir eşik değiştirildiğin
 | 0.1 | `agreement_order_max` 0.7 → 0.85; okuma sırası sütun farkındalıklı okumayla karşılaştırılıyor | İki gerçek CV (biri tek, biri iki sütunlu): sırayı koruyan okumalar 0.945–1.000, karıştıran okumalar 0.608–0.707 |
 | 0.1 | 23 CV'lik sentetik test seti (`tests/fixtures/synthetic/`, Chrome ve Word ile üretildi). Kelimeler karakterlerden kuruluyor (`word_gap_pt` 3); taranmış sayfa için resim şartı (`scan_image_coverage` 0.5, `outline_min_curves` 200); kanal, sola yaslı metnin yanındaki boş şerit olarak yeniden tanımlandı, `gutter_min_width_pt` 15 → 8, `gutter_max_coverage` kaldırıldı | 23'ünün hepsi etiketleriyle uyumlu. Kanal iki sütunlu 6 PDF'in hepsinde (14–53 pt) bulundu, tek sütunluların hiçbirinde bulunmadı; sayfa sırasını koruyan okumaların sıra benzerliği 0.97–1.00 |
 | 0.1 | **İlk kör doğrulama seti, hiçbir değişiklikten önce:** bakımcının resume-xray sonuçlarını görmeden etiketlediği 22 gerçek ve şablon CV (etiketlere göre: Canva 11, Overleaf 5, Google Docs 4, iş sitesi 2; 11 İngilizce, 11 Türkçe) | 204 beklentinin 164'ü uyuşuyor (%80); 22 CV'nin 4'ü tamamen uyuşuyor. Uyuşmazlıklar: 13'ü etiketleme aracından (yalnızca görüntü olan PDF'lerde bölüm ve e-posta beklemiş), 4'ü yalnızca beş standart başlık sayan bir sorudan, gerisi başlık eşleştirmesinden ("Relevant Work Experience" gibi fazladan kelimeli başlıklar), "Eğitimler"in kurslara eşlenmesinden ve LaTeX PDF'lerinde birleşen kelimelerden. Aşağıdaki düzeltmelerden sonra bu set artık kör değildir |
+| 0.1 | **Aynı 22 CV, düzeltmelerden sonra (kör değil):** bütün kelimelerle başlık eşleştirme, "Eğitimler", tekil ve Türkçe başlık biçimleri, çoğunluk biçiminden başlık kademesi, font boyutunun %15'i kelime aralığı, iki yanda akan metin olarak sütunlar; etiket soruları netleştirildikten sonra 11 etiket yeniden cevaplandı | 22 CV'nin 21'i tamamen uyuşuyor. Kalan biri, etiketleyicinin bir düzen cevabını onaylamasını bekliyor. Yansız bir sayı için yeni bir kör set gerekiyor |
 
 ---
 
