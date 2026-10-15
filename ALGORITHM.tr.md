@@ -82,7 +82,7 @@ Her kontrol bir **şiddet** üretir: `kritik`, `uyarı` veya `bilgi`. Ağırlık
 - `kritik` yok, en az bir `uyarı` → **Riskli**
 - Diğer durumlar → **Uygun**
 
-### 2.0 Belgenin okunması (`row_overlap_min = 0.5`, `word_gap_pt = 3`)
+### 2.0 Belgenin okunması (`row_overlap_min = 0.5`, `word_gap_ratio = 0.15`)
 
 İki format da ortak bir ara biçime çevrilir: sayfası, font boyutu, kalınlığı ve bölgesi (gövde,
 üst bilgi, alt bilgi, tablo, metin kutusu) bilinen metin satırları. PDF satırları ayrıca punto
@@ -90,15 +90,17 @@ cinsinden konumlarını ve ait oldukları görsel sırayı taşır. Her sayfa, k
 karşılaştırabilmesi için her okuma stratejisinin tam metnini de saklar.
 
 **PDF kelimeleri.** `pdfplumber` her karakteri kutusu, fontu ve boyutuyla verir. Karakterler içerik
-akışı sırasıyla kelimelere birleştirilir. Kelime şu durumlarda biter: boşluk karakteri, 3 puntodan
-geniş yatay boşluk, metnin sola geri dönmesi veya sıradaki karakterin kelimeyle dikeyde küçük
+akışı sırasıyla kelimelere birleştirilir. Kelime şu durumlarda biter: boşluk karakteri, font boyutunun
+%15'inden geniş yatay boşluk, metnin sola geri dönmesi veya sıradaki karakterin kelimeyle dikeyde küçük
 yüksekliğin en az yarısı kadar örtüşmemesi (aşağıdaki sıra kuralıyla aynı örtüşme). Font ve boyut
 değişimi kelimeyi asla bitirmez; yuvarlak madde işareti her zaman ayrı bir kelimedir. Karakterlerinin
 çoğu adında Bold, Black, Heavy, Semibold veya Demi geçen bir fonttan gelen kelime kalın sayılır.
 
-*Gerekçe:* Bir kelimenin harfleri birbirine değer (boşluk yaklaşık 0); boşluk ise ya bir boşluk
-karakteridir ya da font boyutunun dörtte biri veya daha fazlası kadar bir aralıktır. 3 punto,
-`pdfplumber`'ın varsayılan `x_tolerance` değeridir. *Gerçek ve üretilmiş CV'lerde bulundu:* başka bir
+*Gerekçe:* 3 LaTeX, 1 Canva ve 1 başka gerçek CV'de ölçüldüğünde, bir kelimenin harfleri arasındaki
+boşluk font boyutunun en fazla %8'i, boşluk karakteri olmayan kelimeler arasındaki boşluk (LaTeX
+kelimeleri yalnızca mesafeyle ayırır) ise en az %20'sidir; %15 ikisinin arasındadır. *Gerçek CV'lerde
+bulundu:* ilk sürüm `pdfplumber`'ın varsayılanı olan sabit 3 punto kullanıyordu; bu, 9 puntoluk LaTeX
+metninin kelimelerini birleştiriyordu ("CaptainoftheBlackPearl"; aralık 2.2 punto). *Gerçek ve üretilmiş CV'lerde bulundu:* başka bir
 fonttan alınan harf başka bir yükseklikte durur. Bir CV'de "TÜBİTAK"ın İ harfi ayrı bir font alt
 kümesinden geliyordu; Chrome ile basılmış Türkçe bir CV'de "Yılmaz"ın "ı" harfi Helvetica'ya düşmüş ve
 kelimesinden 5 punto aşağıda duruyordu. Kelimeleri font değişiminde veya üst kenara göre bölmek iki
@@ -132,7 +134,9 @@ gruplaması ve "dar olan önce" kuralı onu tekrar başa aldı.
 Bir PDF sayfasının üç okuması:
 
 - **İçerik akışı sırası:** `pypdf`'in `extract_text()` çıktısı.
-- **Konum sırası:** `pdfplumber`'ın `extract_text()` çıktısı.
+- **Konum sırası:** `pdfplumber`'ın `extract_text()` çıktısı, bizim kelimelerimizle aynı kelime aralığı
+  kuralıyla (`x_tolerance_ratio`); böylece bu okuma bizimkinden yalnızca sırada ayrılır, temsil ettiği
+  okuyucuların (PDFBox, Tika) paylaşmadığı bir `pdfplumber` boşluk tuhaflığında değil.
 - **Sütun farkındalıklı sıra:** bizim satırlarımız. Kanal (2.3) yoksa sıralar yukarıdan aşağı
   okunur. Kanal varsa her satır ya soldadır (sağ sütun başlamadan biter), ya sağdadır (sol sütun
   bittikten sonra başlar) ya da iki sütuna yayılır. Yayılan satırlar sayfayı bloklara böler; bir
@@ -252,7 +256,9 @@ Adaylar, standart İngilizce ve Türkçe başlıklardan oluşan bir sözlükle
 (`resume_xray/data/headings.toml`) **katlama** sonrası `rapidfuzz.fuzz.ratio ≥ 85` ile
 karşılaştırılır. Katlama: küçük harf, `İ`/`I`/`ı` → `i`, diğer Türkçe harfler ASCII'ye (`ş` → `s`,
 ...), noktalama kaldırılır. Katlama sayesinde "EXPERIENCE", "Experience", "DENEYİM" ve "Deneyim",
-hangi dile göre küçük harfe çevrildiklerinden bağımsız olarak eşleşir.
+hangi dile göre küçük harfe çevrildiklerinden bağımsız olarak eşleşir. Bir aday, bir bölümün
+yazımlarından birini bütün kelimeler olarak içeriyorsa da o bölümle eşleşir ("Relevant Work Experience"
+"Work Experience"ı, "Additional Skills" "Skills"i içerir); içerilen en uzun yazım kazanır.
 
 - Temel bir bölüm (deneyim, eğitim, yetenekler) tanınmadı → **uyarı**.
 - Sözlükte olmayan ama tanınan başlıklarla aynı stile (boyut, kalınlık, büyük harf) sahip ve ilk
@@ -262,7 +268,10 @@ hangi dile göre küçük harfe çevrildiklerinden bağımsız olarak eşleşir.
   satırı arayan bir ayrıştırıcı onu görmez.
 
 *Gerekçe:* Ayrıştırıcılar bölümleri başlık sözlükleriyle sınıflandırır. 85 eşiği yazım farklarını
-("Experiences", "Language") yakalarken alakasız kelimeleri dışarıda bırakır. Eksik bölüm kritik
+("Experiences", "Language") yakalarken alakasız kelimeleri dışarıda bırakır. *Gerçek CV'lerde bulundu:*
+fazladan kelimeli başlıklar ("Relevant Work Experience" 77, "Additional Skills" 67, "Profile Summary"
+80) 85'in altında kalıyor ve bölümleri eksik bildiriliyordu; bütün kelime kuralı bunları tanır.
+"Eğitimler" kurslar altındaydı, ama Türkçe CV'ler onu eğitim için kullanıyor. Eksik bölüm kritik
 değil uyarıdır: CV'nin geri kalanı yine okunur.
 
 ### 2.7 İletişim bilgileri ve tarihler (`phone_min_digits = 10`, `phone_max_digits = 15`)

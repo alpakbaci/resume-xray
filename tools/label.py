@@ -2,6 +2,8 @@
 
     python tools/label.py                       # ~/resume-xray-private
     python tools/label.py path/to/folder
+    python tools/label.py --rebuild             # rewrite labels from saved answers after a rule change
+    python tools/label.py --review=a.pdf,b.pdf  # ask again for these files (answers stay pre-filled)
 
 Opens a local page that shows each resume (PDF pages as images; DOCX opens in Word) next to
 questions anyone can answer by looking at the document. It never runs resume-xray and never shows
@@ -28,22 +30,29 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-FOLDER = Path(sys.argv[1] if len(sys.argv) > 1 else "~/resume-xray-private").expanduser()
+ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
+FOLDER = Path(ARGS[0] if ARGS else "~/resume-xray-private").expanduser()
+# Every standard heading the tool knows, so "unusual" means the same to the labeler and the tool.
+STANDARD_HEADINGS = ", ".join(
+    v[0] for v in tomllib.loads((Path(__file__).resolve().parents[1] / "resume_xray/data/headings.toml").read_text(encoding="utf-8")).values()
+)
 CORE = {"experience": "Experience / İş deneyimi", "education": "Education / Eğitim", "skills": "Skills / Yetenekler"}
 SOURCES = ["Canva", "Word", "Google Docs", "LinkedIn", "Job site (Kariyer.net, Indeed...)", "LaTeX / Overleaf",
            "Other web builder", "Scanned / photo", "Unknown"]
 
 QUESTIONS = [
-    ("selectable", "Can you select and copy the text in a PDF viewer? (Metni seçip kopyalayabiliyor musunuz?)",
+    ("selectable", "Open the file in Preview or Acrobat (not on this page, where pages are pictures): can you select and copy the text? (Dosyayı Önizleme'de açın; bu sayfada değil, burada sayfalar resim. Metni seçip kopyalayabiliyor musunuz?)",
      [("yes", "Yes"), ("no", "No, it is an image")], "pdf"),
     ("layout", "How is the main content laid out? (Ana içerik nasıl yerleşmiş?)",
      [("single", "One column"), ("columns", "Two columns or a sidebar"), ("grid", "Boxes / table-like grid")], "pdf"),
-    ("unusual_headings", "Are any section headings unusual, not like Experience, Education, Skills, Projects, Languages? (Alışılmadık başlık var mı?)",
+    ("unusual_headings", f"Is any section heading not one of these standard ones (in any wording or language): {STANDARD_HEADINGS}? (Bu standart başlıklardan biri olmayan bir bölüm başlığı var mı?)",
      [("no", "No"), ("yes", "Yes")], "all"),
     ("email", "Is an email address written out as text? (E-posta adresi metin olarak yazılı mı?)",
      [("body", "Yes, on the page"), ("header", "Only in the Word header or footer"), ("no", "No")], "all"),
     ("linkedin", "LinkedIn address (LinkedIn adresi)",
-     [("text", "Written out as text"), ("link", "Only a clickable word or icon"), ("none", "Not there")], "all"),
+     [("text", "Full address written out, e.g. linkedin.com/in/name (Adres tam yazılı)"),
+      ("link", "Only a clickable word, an icon or just the username (Sadece tıklanabilir kelime, ikon veya kullanıcı adı)"),
+      ("none", "Not there (Yok)")], "all"),
     ("vague_dates", "Any dates written with a season or quarter, like Summer 2021, Q3 2020, Yaz 2021? (Mevsim/çeyrekle yazılmış tarih var mı?)",
      [("no", "No"), ("yes", "Yes")], "all"),
     ("text_boxes", "Is any text inside Word text boxes? (Word metin kutusu içinde metin var mı?)",
@@ -120,13 +129,17 @@ li{{margin:6px 0}} .done{{color:#3f9e6e}} .todo{{color:#d72f2f}} form{{position:
 </style></head><body><header><a href="/">All resumes</a> · {html.escape(title)}</header>{body}</body></html>"""
 
 
+REVIEW = {a.split("=", 1)[1] for a in sys.argv if a.startswith("--review=")}
+REVIEW = {name.strip() for group in REVIEW for name in group.split(",") if name.strip()}
+
+
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
     items = []
     for path in resumes():
-        done = label_file(path).exists()
+        done = label_file(path).exists() and path.name not in REVIEW
         items.append(f'<li><a href="/label/{html.escape(path.name)}">{html.escape(path.name)}</a> '
-                     f'<span class="{"done" if done else "todo"}">{"labeled" if done else "not labeled"}</span></li>')
+                     f'<span class="{"done" if done else "todo"}">{"labeled" if done else ("please review" if path.name in REVIEW else "not labeled")}</span></li>')
     intro = ("<p>Answer by looking at each resume. resume-xray's results are not shown here on purpose: "
              "label first, then compare with <code>python tools/calibrate.py ~/resume-xray-private</code>.</p>")
     return page(f"Blind labeling ({FOLDER})", f'<div style="padding:20px">{intro}<ol>{"".join(items) or "<li>Put PDF or DOCX files in the folder.</li>"}</ol></div>')
@@ -170,7 +183,7 @@ def label_form(name: str) -> str:
         f'<label><input type="checkbox" name="sections" value="{k}" {"checked" if k in answers.get("sections", []) else ""}> {t}</label>'
         for k, t in CORE.items()
     )
-    fields.insert(2, f"<fieldset><legend>Which sections have a clearly visible heading? (Hangi bölümlerin görünür bir başlığı var?)</legend>{checks}</fieldset>")
+    fields.insert(2, f"<fieldset><legend>Which sections have a heading with a standard name, in any wording or language (e.g. Work History, Deneyim)? A section under an unusual name such as Degrees is not ticked. (Hangi bölümlerin standart adlı bir başlığı var? Degrees gibi alışılmadık adlı bir bölümü işaretlemeyin.)</legend>{checks}</fieldset>")
     for key, question in DESCRIBE:
         radios = "".join(
             f'<label><input type="radio" name="{key}" value="{v}" required {"checked" if answers.get(key) == v else ""}> {t}</label>'
@@ -194,14 +207,25 @@ async def save_label(name: str, request: Request) -> RedirectResponse:
     answers.update(sections=form.getlist("sections"), source=form.get("source", "Unknown"),
                    language=form.get("language", ""), comment=form.get("comment", "").strip())
     label_file(path).write_text(to_toml(build_label(answers, path.suffix.lower())), encoding="utf-8")
-    remaining = [p for p in resumes() if not label_file(p).exists()]
+    REVIEW.discard(path.name)
+    remaining = [p for p in resumes() if not label_file(p).exists() or p.name in REVIEW]
     return RedirectResponse(f"/label/{remaining[0].name}" if remaining else "/", status_code=303)
 
 
-def build_label(a: dict, suffix: str) -> dict:
+def build_label(a: dict, suffix: str, labeled_on: str | None = None, history: str = "") -> dict:
     """Turn visible facts into expectations (tests/fixtures/README.md)."""
     find, avoid, affects = [], [], {}
     pdf = suffix == ".pdf"
+    labeled_on = labeled_on or date.today().isoformat()
+    traits = [key.replace("_", " ") for key, _ in DESCRIBE if a.get(key) == "yes"]
+    note = (f"Labeled blind, before running resume-xray, on {labeled_on}. "
+            f"Made with {a['source']}; language {a['language']}."
+            + (f" Has: {', '.join(traits)}." if traits else "")
+            + (f" {a['comment']}" if a["comment"] else "")
+            + (f" {history}" if history else ""))
+    if pdf and a.get("selectable") == "no":
+        # No text layer: nothing written on the page can be found, so nothing else is expected.
+        return {"must_find": ["no_text_layer"], "must_not_find": [], "sections": [], "note": note, "answers": a}
 
     def expect(condition: bool, code: str) -> None:
         (find if condition else avoid).append(code)
@@ -221,14 +245,8 @@ def build_label(a: dict, suffix: str) -> dict:
     expect(a.get("email") == "no", "no_email")
     expect(a.get("linkedin") == "link", "linkedin_hidden")
     expect(a.get("vague_dates") == "yes", "vague_dates")
-    if a.get("selectable") != "no":
-        missing = [s for s in CORE if s not in a["sections"]]
-        expect(bool(missing), "section_missing")
-    traits = [key.replace("_", " ") for key, _ in DESCRIBE if a.get(key) == "yes"]
-    note = (f"Labeled blind, before running resume-xray, on {date.today().isoformat()}. "
-            f"Made with {a['source']}; language {a['language']}."
-            + (f" Has: {', '.join(traits)}." if traits else "")
-            + (f" {a['comment']}" if a["comment"] else ""))
+    missing = [s for s in CORE if s not in a["sections"]]
+    expect(bool(missing), "section_missing")
     label = {"must_find": find, "must_not_find": avoid, "sections": a["sections"], "note": note}
     if affects:
         label["affects"] = affects
@@ -250,7 +268,26 @@ def to_toml(label: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def rebuild() -> None:
+    """Rewrite every label from its saved answers with the current rules, keeping the labeling date."""
+    import re
+
+    for path in resumes():
+        if not label_file(path).exists():
+            continue
+        old = tomllib.loads(label_file(path).read_text(encoding="utf-8"))
+        found = re.search(r"on (\d{4}-\d{2}-\d{2})\.", old.get("note", ""))
+        history = re.search(r"(Rebuilt .*)$", old.get("note", ""))
+        note = (history.group(1) + " " if history else "") + f"Rebuilt on {date.today().isoformat()} from the saved answers."
+        label = build_label(old["answers"], path.suffix.lower(), found.group(1) if found else None, note)
+        label_file(path).write_text(to_toml(label), encoding="utf-8")
+        print("rebuilt", path.name)
+
+
 if __name__ == "__main__":
+    if "--rebuild" in sys.argv:
+        rebuild()
+        raise SystemExit(0)
     FOLDER.mkdir(parents=True, exist_ok=True)
     port = 8766
     print(f"Labeling {FOLDER} at http://127.0.0.1:{port}  (Ctrl+C to stop)")

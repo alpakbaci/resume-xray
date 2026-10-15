@@ -5,8 +5,8 @@
 [reader]
 # 2.0 A word joins a row when overlap / min(word height, row height) is at least this.
 row_overlap_min = 0.5
-# 2.0 A horizontal gap wider than this between two characters ends a word.
-word_gap_pt = 3
+# 2.0 A horizontal gap wider than this share of the font size between two characters ends a word.
+word_gap_ratio = 0.15
 
 [parseability]
 # 2.1 Text layer: a page with fewer characters than this whose content is an image covering at

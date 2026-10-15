@@ -26,7 +26,7 @@ def read_pdf(source: BytesIO, name: str) -> Document:
     with pdfplumber.open(source) as pdf:
         for index, page in enumerate(pdf.pages):
             number = index + 1
-            words = words_from_chars(page.chars, weights["reader"]["word_gap_pt"], row_overlap)
+            words = words_from_chars(page.chars, weights["reader"]["word_gap_ratio"], row_overlap)
             lines = group_lines(words, number, row_overlap, split_gap)
             gutter = find_gutter(lines, float(page.width), weights["parseability"])
             # Keep lines in column-aware reading order, so sections follow their own column.
@@ -38,7 +38,8 @@ def read_pdf(source: BytesIO, name: str) -> Document:
                     height=float(page.height),
                     readings={
                         "stream": alt_texts[index] if index < len(alt_texts) else None,
-                        "position": page.extract_text() or "",
+                        # Same spacing rule as our words, so this reading differs only in order.
+                        "position": page.extract_text(x_tolerance_ratio=weights["reader"]["word_gap_ratio"]) or "",
                         "columns": column_order(lines, gutter),
                     },
                     words=words,
@@ -53,10 +54,11 @@ def read_pdf(source: BytesIO, name: str) -> Document:
     return Document(name=name, kind="pdf", pages=pages)
 
 
-def words_from_chars(chars: list[dict], word_gap: float, row_overlap: float) -> list[Word]:
+def words_from_chars(chars: list[dict], word_gap_ratio: float, row_overlap: float) -> list[Word]:
     """Join characters into words in content-stream order (ALGORITHM.md §2.0).
 
-    A word ends at whitespace, at a horizontal gap wider than word_gap, when the text moves back
+    A word ends at whitespace, at a horizontal gap wider than word_gap_ratio of the font size (PDFs
+    made with LaTeX separate words by distance only, without space characters), when the text moves back
     to the left, or when the next character does not overlap the word vertically (row_overlap).
     Font and size never end a word: a letter taken from another font, with another height, stays
     in its word (e.g. the İ of "TÜBİTAK" or a fallback "ı"). A round bullet is always a word of its
@@ -89,6 +91,7 @@ def words_from_chars(chars: list[dict], word_gap: float, row_overlap: float) -> 
         if current:
             last = current[-1]
             gap = char["x0"] - last["x1"]
+            word_gap = word_gap_ratio * max(char["size"], last["size"])
             overlap = _overlap_ratio(char["top"], char["bottom"], min(c["top"] for c in current), max(c["bottom"] for c in current))
             if gap > word_gap or char["x0"] < last["x0"] - word_gap or overlap < row_overlap:
                 flush()

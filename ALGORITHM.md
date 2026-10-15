@@ -83,7 +83,7 @@ thresholds.
 - No `critical`, at least one `warning` → **Risky**
 - Otherwise → **OK**
 
-### 2.0 Reading the document (`row_overlap_min = 0.5`, `word_gap_pt = 3`)
+### 2.0 Reading the document (`row_overlap_min = 0.5`, `word_gap_ratio = 0.15`)
 
 Both formats are converted into one shared representation: lines of text with their page, font
 size, boldness and region (body, header, footer, table, text box). PDF lines also carry their
@@ -92,14 +92,17 @@ reading strategy, so that checks can compare them.
 
 **PDF words.** `pdfplumber` gives every character with its box, font and size. Characters are
 joined into words in content-stream order. A word ends at whitespace, at a horizontal gap wider
-than 3 points, when the text moves back to the left, or when the next character does not overlap
+than 15% of the font size, when the text moves back to the left, or when the next character does not overlap
 the word vertically by at least half of the smaller height (the same overlap rule as rows, below).
 Font and size never end a word, and a round bullet is always a word of its own. A word counts as
 bold when most of its characters come from a font whose name contains Bold, Black, Heavy, Semibold
 or Demi.
 
-*Justification:* Letters inside a word touch (gap about 0); a space is either a space character or
-a gap of a quarter of the font size or more. 3 points is the default `x_tolerance` of `pdfplumber`.
+*Justification:* Measured on 3 LaTeX, 1 Canva and 1 other real resume, gaps between letters of a
+word are at most 8% of the font size, and gaps between words that have no space character (LaTeX
+separates words by distance only) are at least 20%; 15% lies between. *Found on real resumes:* the
+first version used a fixed 3 points, `pdfplumber`'s default, which joined the words of 9 pt LaTeX
+text ("CaptainoftheBlackPearl", the gap being 2.2 points).
 *Found on real and generated resumes:* a letter taken from another font sits at another height. On
 one resume the İ of "TÜBİTAK" came from a separate font subset; in a Chrome-printed Turkish resume
 the "ı" of "Yılmaz" fell back to Helvetica and sat 5 points lower than its word. Splitting words at
@@ -133,7 +136,9 @@ narrower-first rule put it back in front.
 The three readings of a PDF page are:
 
 - **Content-stream order:** `pypdf`'s `extract_text()`.
-- **Position order:** `pdfplumber`'s `extract_text()`.
+- **Position order:** `pdfplumber`'s `extract_text()`, with the same word-gap rule as our words
+  (`x_tolerance_ratio`), so that this reading differs from ours only in order and not in a spacing
+  quirk of `pdfplumber` that the readers it stands for (PDFBox, Tika) do not share.
 - **Column-aware order:** our lines. Without a gutter (2.3), rows are read top to bottom. With a
   gutter, each line is on the left (it ends before the right column starts), on the right (it
   starts after the left column ends) or spans both columns. Spanning lines split the page into
@@ -252,7 +257,9 @@ Candidates are compared with a dictionary of standard English and Turkish headin
 (`resume_xray/data/headings.toml`) using `rapidfuzz.fuzz.ratio ≥ 85`, after **folding**: lowercase,
 `İ`/`I`/`ı` → `i`, other Turkish letters to ASCII (`ş` → `s`, ...), punctuation removed. Folding lets
 "EXPERIENCE", "Experience", "DENEYİM" and "Deneyim" match regardless of the language they were
-lowercased in.
+lowercased in. A candidate also matches a section when it contains one of its wordings as whole
+words ("Relevant Work Experience" contains "Work Experience", "Additional Skills" contains
+"Skills"); the longest contained wording wins.
 
 - A core section (experience, education, skills) is not recognized → **warning**.
 - A candidate that is not in the dictionary but has the same style (size, boldness, capitals) as
@@ -263,7 +270,10 @@ lowercased in.
   strategies: a parser looking for heading lines does not see it.
 
 *Justification:* Parsers classify sections using heading dictionaries. A threshold of 85 catches
-spelling variants ("Experiences", "Language") while leaving unrelated words out. A missing
+spelling variants ("Experiences", "Language") while leaving unrelated words out. *Found on real
+resumes:* headings with an extra word ("Relevant Work Experience" 77, "Additional Skills" 67,
+"Profile Summary" 80) fell below 85 and their sections were reported missing; the whole-word rule
+recognizes them. "Eğitimler" was listed under courses, but Turkish resumes use it for education. A missing
 section is a warning, not critical: the rest of the resume is still read.
 
 ### 2.7 Contact details and dates (`phone_min_digits = 10`, `phone_max_digits = 15`)

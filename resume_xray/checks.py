@@ -299,14 +299,25 @@ def heading_dictionary() -> dict[str, tuple[str, ...]]:
 
 
 def match_heading(text: str, minimum: float) -> tuple[str | None, str, float]:
-    """(section name or None, closest section name, best score)."""
+    """(section name or None, closest section name, best score).
+
+    A heading matches a section when it is close to one of its wordings, or when it contains a
+    wording as whole words ("Relevant Work Experience" contains "Work Experience"); the longest
+    contained wording wins."""
     key = fold(text)
     best_name, best_score = "", 0.0
     for name, variants in heading_dictionary().items():
         score = max(fuzz.ratio(key, v) for v in variants)
         if score > best_score:
             best_name, best_score = name, score
-    return (best_name if best_score >= minimum else None), best_name, best_score
+    if best_score >= minimum:
+        return best_name, best_name, best_score
+    padded = f" {key} "
+    contained = [(len(v), name) for name, variants in heading_dictionary().items() for v in variants if f" {v} " in padded]
+    if contained:
+        name = max(contained)[1]
+        return name, name, 100.0
+    return None, best_name, best_score
 
 
 def heading_candidates(document: Document, weights: dict) -> list[Line]:
