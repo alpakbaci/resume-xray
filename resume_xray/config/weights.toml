@@ -5,18 +5,22 @@
 [reader]
 # 2.0 A word joins a row when overlap / min(word height, row height) is at least this.
 row_overlap_min = 0.5
+# 2.0 A horizontal gap wider than this between two characters ends a word.
+word_gap_pt = 3
 
 [parseability]
-# 2.1 Text layer: fewer characters than this on a page means a scanned image.
+# 2.1 Text layer: a page with fewer characters than this whose content is an image covering at
+# least scan_image_coverage of the page, or at least outline_min_curves vector curves, has no text layer.
 min_chars_per_page = 50
+scan_image_coverage = 0.5
+outline_min_curves = 200
 
 # 2.2 Garbled character ratio (cid glyphs, U+FFFD, private use area).
 garbled_warn = 0.02
 garbled_critical = 0.10
 
-# 2.3 Multi-column detection: a vertical whitespace gutter.
-gutter_min_width_pt = 15
-gutter_max_coverage = 0.05
+# 2.3 Multi-column detection: an empty vertical channel between two columns.
+gutter_min_width_pt = 8
 gutter_min_height = 0.5
 gutter_x_range = [0.2, 0.8]
 

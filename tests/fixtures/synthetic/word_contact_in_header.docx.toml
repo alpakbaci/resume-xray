@@ -1,0 +1,7 @@
+verdict = "Risky"
+must_find = ["contact_in_header"]
+sections = ["experience", "education", "skills"]
+note = "Email and phone only in the page header."
+
+[affects]
+contact_in_header = ["body"]

@@ -1,0 +1,3 @@
+verdict = "Unreadable"
+must_find = ["no_text_layer"]
+note = "Page image only, like a scanned or photographed resume."

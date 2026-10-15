@@ -1,0 +1,3 @@
+sections = ["experience", "education", "skills"]
+must_not_find = ["no_email"]
+note = "Turkish resume printed by Chrome. pypdf splits ı, ş, ğ, İ off their words in this file; whether Apache Tika does the same is not yet measured, so no reading-level finding is asserted."

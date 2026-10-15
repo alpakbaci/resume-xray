@@ -82,16 +82,30 @@ Her kontrol bir **şiddet** üretir: `kritik`, `uyarı` veya `bilgi`. Ağırlık
 - `kritik` yok, en az bir `uyarı` → **Riskli**
 - Diğer durumlar → **Uygun**
 
-### 2.0 Belgenin okunması (`row_overlap_min = 0.5`)
+### 2.0 Belgenin okunması (`row_overlap_min = 0.5`, `word_gap_pt = 3`)
 
 İki format da ortak bir ara biçime çevrilir: sayfası, font boyutu, kalınlığı ve bölgesi (gövde,
 üst bilgi, alt bilgi, tablo, metin kutusu) bilinen metin satırları. PDF satırları ayrıca punto
 cinsinden konumlarını ve ait oldukları görsel sırayı taşır. Her sayfa, kontrollerin
 karşılaştırabilmesi için her okuma stratejisinin tam metnini de saklar.
 
-**PDF.** `pdfplumber` her kelimeyi koordinatları, font adı ve boyutuyla verir. Bir kelimenin
-dikey alanı, sıranın dikey alanıyla ikisinin küçük yüksekliğinin en az yarısı kadar örtüşüyorsa
-kelime o sıraya katılır:
+**PDF kelimeleri.** `pdfplumber` her karakteri kutusu, fontu ve boyutuyla verir. Karakterler içerik
+akışı sırasıyla kelimelere birleştirilir. Kelime şu durumlarda biter: boşluk karakteri, 3 puntodan
+geniş yatay boşluk, metnin sola geri dönmesi veya sıradaki karakterin kelimeyle dikeyde küçük
+yüksekliğin en az yarısı kadar örtüşmemesi (aşağıdaki sıra kuralıyla aynı örtüşme). Font ve boyut
+değişimi kelimeyi asla bitirmez; yuvarlak madde işareti her zaman ayrı bir kelimedir. Karakterlerinin
+çoğu adında Bold, Black, Heavy, Semibold veya Demi geçen bir fonttan gelen kelime kalın sayılır.
+
+*Gerekçe:* Bir kelimenin harfleri birbirine değer (boşluk yaklaşık 0); boşluk ise ya bir boşluk
+karakteridir ya da font boyutunun dörtte biri veya daha fazlası kadar bir aralıktır. 3 punto,
+`pdfplumber`'ın varsayılan `x_tolerance` değeridir. *Gerçek ve üretilmiş CV'lerde bulundu:* başka bir
+fonttan alınan harf başka bir yükseklikte durur. Bir CV'de "TÜBİTAK"ın İ harfi ayrı bir font alt
+kümesinden geliyordu; Chrome ile basılmış Türkçe bir CV'de "Yılmaz"ın "ı" harfi Helvetica'ya düşmüş ve
+kelimesinden 5 punto aşağıda duruyordu. Kelimeleri font değişiminde veya üst kenara göre bölmek iki
+kelimeyi de bozuyordu ("TÜB İ TAK", "Y ı lmaz").
+
+**PDF sıraları ve satırları.** Bir kelimenin dikey alanı, sıranın dikey alanıyla ikisinin küçük
+yüksekliğinin en az yarısı kadar örtüşüyorsa kelime o sıraya katılır:
 
 ```
 örtüşme(kelime, sıra) / min(yükseklik(kelime), yükseklik(sıra)) ≥ 0.5
@@ -99,8 +113,7 @@ kelime o sıraya katılır:
 
 Sıra, iki kelime arasındaki boşluğun `gutter_min_width_pt` değerinden (bkz. 2.3) geniş olduğu
 yerlerden ayrı satırlara bölünür; böylece iki sütunlu bir sayfanın sol ve sağ sütunu tek satırda
-birleşmez. Karakterlerinin çoğu adında Bold, Black, Heavy, Semibold veya Demi geçen bir fonttan
-gelen kelime kalın sayılır.
+birleşmez.
 
 *Gerekçe:* Aynı satırdaki kelimeler, boyutları farklı olsa bile yüksekliklerinin çoğunu paylaşır:
 madde işareti gibi küçük bir karakter tamamen satırın içinde kalır (oran 1.0). Ardışık satırlar ise
@@ -108,23 +121,24 @@ neredeyse hiç örtüşmez, çünkü satır aralığı normalde en az font boyut
 çok sık aralıkta en fazla yaklaşık 0.2). 0.5 ikisinin arasında güvenli bir değerdir.
 
 Satır içinde kelimeler soldan sağa sıralanır; aynı x konumunda başlayan kelimelerde dar olan önce
-gelir. Kelime sınırları yalnızca karakter aralıklarından belirlenir, font değişiminden asla.
+gelir.
 
 *Gerçek bir CV'de bulundu:* Önceki sürüm, üst kenarları 3 puntodan yakın kelimeleri grupluyordu.
 Bir CV'de görünen madde işaretleri çizilmiş şekillerdi; her maddenin ilk harfinin üzerinde, metnin
 taban çizgisinde ve satırın üstünden 6.7 punto aşağıda görünmez 0.75 puntoluk bir metin madde
 işareti duruyordu. Üst kenar gruplaması bu işareti satırın sonuna taşıyordu ("Managed •"); örtüşme
-gruplaması ve "dar olan önce" kuralı onu tekrar başa aldı. Aynı CV, İ harfi için ayrı bir font alt
-kümesi kullanıyordu ve kelimeleri font değişiminde bölmek "TÜBİTAK"ı "TÜB İ TAK" yapıyordu.
+gruplaması ve "dar olan önce" kuralı onu tekrar başa aldı.
 
 Bir PDF sayfasının üç okuması:
 
 - **İçerik akışı sırası:** `pypdf`'in `extract_text()` çıktısı.
 - **Konum sırası:** `pdfplumber`'ın `extract_text()` çıktısı.
 - **Sütun farkındalıklı sıra:** bizim satırlarımız. Kanal (2.3) yoksa sıralar yukarıdan aşağı
-  okunur. Kanal varsa, kanalı kesen satırlar sayfayı bloklara böler; bir blokta iki tarafta da en
-  az iki sıra varsa önce sol, sonra sağ sütun okunur, yoksa blok sıra sıra okunur (böylece iki
-  tarafta öğesi olan bir iletişim satırı bir arada kalır).
+  okunur. Kanal varsa her satır ya soldadır (sağ sütun başlamadan biter), ya sağdadır (sol sütun
+  bittikten sonra başlar) ya da iki sütuna yayılır. Yayılan satırlar sayfayı bloklara böler; bir
+  blokta iki tarafta da en az iki sıra varsa önce sol, sonra sağ sütun okunur, yoksa blok sıra sıra
+  okunur (böylece iki tarafta öğesi olan bir iletişim satırı bir arada kalır). Satırlar bu sırada
+  saklanır; böylece bir bölüm başlığı yalnızca kendi sütunundaki satırları toplar.
 
 **DOCX.** `python-docx` paragrafları gövdedeki sırasıyla, tabloları ve her bölümün üst/alt
 bilgisini verir. Metin kutuları ham XML'den (`w:txbxContent`) okunur, çünkü `python-docx` bunları
@@ -132,14 +146,20 @@ sunmaz; Word her kutuyu iki kez saklar (DrawingML ve VML yedeği) ve yalnızca b
 boyutu ve kalınlık metin parçalarından (run), yoksa paragraf stilinden alınır. Her iki formatta da
 bağlantı (hyperlink) hedefleri 2.7 için toplanır.
 
-### 2.1 Metin katmanı (`min_chars_per_page = 50`)
+### 2.1 Metin katmanı (`min_chars_per_page = 50`, `scan_image_coverage = 0.5`, `outline_min_curves = 200`)
 
-Her sayfadaki boşluk olmayan karakter sayısı `n_c` hesaplanır. `n_c < 50` ise sayfa taranmış bir
-görüntü veya şekle dönüştürülmüş metindir → **kritik** (tüm stratejileri bozar; yalnızca OCR
-çalıştıran bir ATS okuyabilir [4]).
+Bir PDF sayfası 50'den az boşluk olmayan karakter içeriyor **ve** içeriği bir resimse **metin
+katmanı yoktur**: sayfanın en az yarısını kaplayan bir görsel ya da en az 200 vektör eğrisi (şekle
+dönüştürülmüş metin) → **kritik** (tüm stratejileri bozar; yalnızca OCR çalıştıran bir ATS okuyabilir
+[4]). Toplamda 50'den az karakter içeren bir DOCX de aynı şekilde değerlendirilir.
 
 *Gerekçe:* Tipik bir CV sayfası 1.500–3.000 karakter içerir (kendi gözlemimiz). 50'nin altı,
-yalnızca sayfa numarası gibi kırıntıların çıkarılabildiği anlamına gelir.
+yalnızca sayfa numarası gibi kırıntıların çıkarılabildiği anlamına gelir. Resim şartı testten sonra
+eklendi: ikinci sayfasında yalnızca Diller bölümü (39 karakter) olan iki sayfalık bir CV taranmış
+sanılıyordu. Taranmış sayfa, bütün sayfayı kaplayan tek bir görseldir (test setinde kaplama 1.0).
+Şekle dönüştürülmüş metin her harf için en az bir eğri çizer, yani böyle bir sayfada binden fazla eğri
+olur; test setindeki süslemeler en fazla 18 eğri çizdi. 200 ikisinin arasındadır, ancak henüz şekle
+dönüştürülmüş bir CV ölçülmedi.
 
 ### 2.2 Bozuk karakterler (`garbled_warn = 0.02`, `garbled_critical = 0.10`)
 
@@ -148,40 +168,44 @@ g = bozuk_karakter_sayısı / toplam_karakter_sayısı
 ```
 
 Sütun farkındalıklı okumada bozuk sayılanlar: `(cid:NN)` kalıpları (karakter eşlemesi olmayan
-fontlar), `U+FFFD` (�) ve Unicode özel kullanım alanı `U+E000–U+F8FF` (ikon fontları).
+fontlar), `U+FFFD` (�) ve Unicode özel kullanım alanı `U+E000–F8FF` (ikon fontları).
 
 - `g > 0.02` → **uyarı**, `g > 0.10` → **kritik**
 
 *Gerekçe:* %2'ye kadarı ikon ve madde işaretlerinden gelebilir ve okunabilirliği bozmaz. %10'un
 üstünde kelimeler okunamaz hale gelir.
 
-### 2.3 Çok sütunlu düzen (`gutter_min_width_pt = 15`, `gutter_max_coverage = 0.05`, `gutter_min_height = 0.5`, `gutter_x_range = [0.2, 0.8]`)
+### 2.3 Çok sütunlu düzen (`gutter_min_width_pt = 8`, `gutter_min_height = 0.5`, `gutter_x_range = [0.2, 0.8]`)
 
-Sayfa genişliği 1 puntoluk dilimlere bölünür. Her dilim için:
+**Kanal**, iki sütun arasındaki boş dikey şerittir:
 
-```
-kapsama(x) = kutusu dilimi kesen satır sayısı / toplam satır sayısı
-```
-
-**Kanal**, sayfa genişliğinin %20–%80 aralığında, en az 15 punto genişliğinde, `kapsama(x) ≤ 0.05`
-olan en geniş kesintisiz şerittir; ancak solundaki ve sağındaki satırların her biri sayfanın metin
-yüksekliğinin en az %50'sini kaplamalıdır.
+1. Sayfa genişliğinin %20–%80 aralığı 1 puntoluk dilimlerle taranır. Kanal, en az 8 punto genişliğinde
+   ve hiçbir satırın kesmediği, sayfanın metin yüksekliğinin en az %50'si kadar ortak bir dikey
+   aralığı paylaşan ardışık dilimlerdir.
+2. Bu dikey aralıkta her iki yanda da **sola yaslı metin** sütunu varsa kanal iki sütunu ayırır:
+   aynı x konumunda başlayıp farklı x konumlarında biten en az iki sıra.
+3. Bu tür kanalların en genişi sütun aralığıdır.
 
 Kanalı olan bir sayfada bir okuma, kelime sırası sütun farkındalıklı okumadan farklıysa (2.4'teki
-gibi) ya da aynı sıradaki sol ve sağ sütunun metnini tek bir çıktı satırına koyuyorsa **sütunları
-karıştırır**. Bulgu, sütunları karıştıran stratejileri belirten bir **uyarı**, hiçbiri karıştırmıyorsa
-**bilgi** olur.
+gibi) ya da aynı sıradaki sol ve sağ sütunun metnini tek bir çıktı satırında yan yana birleştiriyorsa
+**sütunları karıştırır**. Bulgu, sütunları karıştıran stratejileri belirten bir **uyarı**, hiçbiri
+karıştırmıyorsa **bilgi** olur.
 
-*Test sırasında bulundu:* dar bir sağ sütunda (her satırda bir yetenek), konum sırası her yeteneği
-bir deneyim satırının sonuna yapıştırdı, ama kelime sırasının %85'ini korudu; tek satır testi bu
-durumu yakalar.
+*Gerekçe:* Test setinde ölçülen sütun aralıkları 14 ile 53 punto arasındadır (en darı, düzen için
+kullanılan bir Word tablosu); kelime arası boşluk ise 3–5 puntodur; 8 punto ikisini ayırır. Tüm
+satırların bir payı yerine boş bir dikey aralık aramak, sütunların üstünde tam genişlikte bir başlık
+bloğuna (isim, iletişim, özet) izin verir. Sola yaslılık şartı, bir sütunu sağa yaslı tarihlerden
+("Jan 2021 – Present") ayırır; tarihler aynı x'te biter, farklı x'lerde başlar. Sütunlar yalnızca
+onları karıştıran okuyucular için sorundur; Tika, konuma göre sıralamanın "sütunları birbirine
+karıştırabileceğini" belgeler [4]. Textkernel, CV'lerin en az %15'inin sütun kullandığını tahmin eder
+ve görsel boşlukları bulan eski kural tabanlı yöntemini anlatır; bu yöntem ona benzer [6].
 
-*Gerekçe:* Sütun arası boşluk genellikle 15 puntodan geniş, kelime arası boşluk 3–5 puntodur. %50
-yükseklik şartı, yalnızca başlık alanında yan yana öğeler bulunan tek sütunlu sayfaların yanlış
-işaretlenmesini önler. Sütunlar yalnızca onları karıştıran okuyucular için sorundur; Tika, konuma
-göre sıralamanın "sütunları birbirine karıştırabileceğini" belgeler [4]. Textkernel, CV'lerin en az
-%15'inin sütun kullandığını tahmin eder ve görsel boşlukları bulan eski kural tabanlı yöntemini
-anlatır; bu yöntem ona benzer [6].
+*Test sırasında bulundu:* ilk sürüm, kanalı kesen satırların tüm satırların en fazla %5'i olmasını ve
+her iki yanın metin yüksekliğinin %50'sini kaplamasını istiyordu. Word'ün iki sütun ve tablo
+düzenlerini kaçırıyordu (başlık kanalı kesiyordu; sağ sütun kısaydı), gevşetildiğinde de sağa yaslı
+tarihleri sütun sanıyordu. Dar bir sağ sütunda (her satırda bir yetenek), konum sırası her yeteneği
+bir deneyim satırının sonuna yapıştırdı ama kelime sırasının %85'ini korudu; yan yana birleşme testi
+bu durumu yakalar.
 
 ### 2.4 Okuma sırası ve kaybolan kelimeler (`agreement_order_max = 0.85`)
 
@@ -441,6 +465,7 @@ Her belge için beklenen bulgular elle etiketlenir. Bir eşik değiştirildiğin
 |---|---|---|
 | 0.1 | Başlangıç değerleri | — (test seti henüz yok) |
 | 0.1 | `agreement_order_max` 0.7 → 0.85; okuma sırası sütun farkındalıklı okumayla karşılaştırılıyor | İki gerçek CV (biri tek, biri iki sütunlu): sırayı koruyan okumalar 0.945–1.000, karıştıran okumalar 0.608–0.707 |
+| 0.1 | 23 CV'lik sentetik test seti (`tests/fixtures/synthetic/`, Chrome ve Word ile üretildi). Kelimeler karakterlerden kuruluyor (`word_gap_pt` 3); taranmış sayfa için resim şartı (`scan_image_coverage` 0.5, `outline_min_curves` 200); kanal, sola yaslı metnin yanındaki boş şerit olarak yeniden tanımlandı, `gutter_min_width_pt` 15 → 8, `gutter_max_coverage` kaldırıldı | 23'ünün hepsi etiketleriyle uyumlu. Kanal iki sütunlu 6 PDF'in hepsinde (14–53 pt) bulundu, tek sütunluların hiçbirinde bulunmadı; sayfa sırasını koruyan okumaların sıra benzerliği 0.97–1.00 |
 
 ---
 

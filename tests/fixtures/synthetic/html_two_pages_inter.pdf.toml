@@ -1,0 +1,4 @@
+verdict = "OK"
+must_not_find = ["no_text_layer"]
+sections = ["experience", "education", "skills"]
+note = "Page 2 holds only the Languages section; a short last page is not a scan."

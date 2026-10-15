@@ -1,0 +1,4 @@
+verdict = "Unreadable"
+must_find = ["no_email", "linkedin_hidden"]
+sections = ["experience", "education", "skills"]
+note = "No email anywhere; LinkedIn only as a link behind the word 'LinkedIn'."

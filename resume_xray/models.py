@@ -52,6 +52,9 @@ class Gutter:
 
     x0: float
     x1: float
+    # Vertical stretch where the channel is empty, in points from the top of the page.
+    y0: float = 0.0
+    y1: float = 0.0
 
     @property
     def center(self) -> float:
@@ -69,6 +72,9 @@ class Page:
     lines: list[Line] = field(default_factory=list)
     # Non-whitespace characters found on the page.
     char_count: int = 0
+    # Share of the page area covered by images, and number of vector curves drawn. PDF only.
+    image_coverage: float = 0.0
+    curves: int = 0
     # Columns declared in the document settings; DOCX only.
     columns: int | None = None
     gutter: Gutter | None = None

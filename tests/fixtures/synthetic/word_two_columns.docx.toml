@@ -1,0 +1,4 @@
+verdict = "OK"
+must_not_find = ["columns_scramble"]
+sections = ["experience", "education", "skills"]
+note = "In the DOCX itself, newspaper columns are stored in reading order."

@@ -1,0 +1,11 @@
+verdict = "Risky"
+must_find = ["columns_scramble"]
+must_not_find = ["no_email", "no_text_layer"]
+sections = ["experience", "education", "skills"]
+note = "Two equal columns under a full-width header."
+
+[affects]
+columns_scramble = ["position"]
+
+[not_affects]
+columns_scramble = ["columns"]

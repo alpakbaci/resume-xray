@@ -83,16 +83,30 @@ thresholds.
 - No `critical`, at least one `warning` → **Risky**
 - Otherwise → **OK**
 
-### 2.0 Reading the document (`row_overlap_min = 0.5`)
+### 2.0 Reading the document (`row_overlap_min = 0.5`, `word_gap_pt = 3`)
 
 Both formats are converted into one shared representation: lines of text with their page, font
 size, boldness and region (body, header, footer, table, text box). PDF lines also carry their
 position in points and the visual row they belong to. Each page also keeps the full text of every
 reading strategy, so that checks can compare them.
 
-**PDF.** `pdfplumber` gives every word with its coordinates, font name and size. A word joins
-a visual row when its vertical extent overlaps the row's by at least half of the smaller of the
-two heights:
+**PDF words.** `pdfplumber` gives every character with its box, font and size. Characters are
+joined into words in content-stream order. A word ends at whitespace, at a horizontal gap wider
+than 3 points, when the text moves back to the left, or when the next character does not overlap
+the word vertically by at least half of the smaller height (the same overlap rule as rows, below).
+Font and size never end a word, and a round bullet is always a word of its own. A word counts as
+bold when most of its characters come from a font whose name contains Bold, Black, Heavy, Semibold
+or Demi.
+
+*Justification:* Letters inside a word touch (gap about 0); a space is either a space character or
+a gap of a quarter of the font size or more. 3 points is the default `x_tolerance` of `pdfplumber`.
+*Found on real and generated resumes:* a letter taken from another font sits at another height. On
+one resume the İ of "TÜBİTAK" came from a separate font subset; in a Chrome-printed Turkish resume
+the "ı" of "Yılmaz" fell back to Helvetica and sat 5 points lower than its word. Splitting words at
+font changes, or by top edge, broke both words ("TÜB İ TAK", "Y ı lmaz").
+
+**PDF rows and lines.** A word joins a visual row when its vertical extent overlaps the row's by at
+least half of the smaller of the two heights:
 
 ```
 overlap(word, row) / min(height(word), height(row)) ≥ 0.5
@@ -100,8 +114,7 @@ overlap(word, row) / min(height(word), height(row)) ≥ 0.5
 
 A row is then split into separate lines wherever the gap between two words is wider than
 `gutter_min_width_pt` (see 2.3), so the left and right columns of a two-column page do not merge
-into one line. A word counts as bold when most of its characters come from a font whose name
-contains Bold, Black, Heavy, Semibold or Demi.
+into one line.
 
 *Justification:* Words on one line share most of their height, even when their sizes differ: a
 small glyph such as a bullet sits entirely inside the line (ratio 1.0). Consecutive lines barely
@@ -109,23 +122,25 @@ overlap, because line spacing is normally at least the font size (ratio near 0, 
 with very tight spacing). 0.5 sits safely between the two.
 
 Within a line, words are ordered left to right; words starting at the same x are ordered
-narrower first. Word boundaries come from character spacing only, never from font changes.
+narrower first.
 
 *Found on a real resume:* An earlier version grouped words whose top edges were within 3 points.
 On one resume the visible bullets were drawn shapes, and an invisible 0.75 pt text bullet sat over
 the first letter of each item, on the text's baseline and 6.7 points below the line's top.
 Top-edge grouping moved that bullet to the end of the line ("Managed •"); overlap grouping and the
-narrower-first rule put it back in front. The same resume used a separate font subset for the
-letter İ, and splitting words at font changes had turned "TÜBİTAK" into "TÜB İ TAK".
+narrower-first rule put it back in front.
 
 The three readings of a PDF page are:
 
 - **Content-stream order:** `pypdf`'s `extract_text()`.
 - **Position order:** `pdfplumber`'s `extract_text()`.
 - **Column-aware order:** our lines. Without a gutter (2.3), rows are read top to bottom. With a
-  gutter, lines that cross it split the page into blocks; in a block, the left column is read
-  before the right one when both sides hold at least two rows, otherwise the block is read row by
-  row (this keeps a contact row with items on both sides together).
+  gutter, each line is on the left (it ends before the right column starts), on the right (it
+  starts after the left column ends) or spans both columns. Spanning lines split the page into
+  blocks; in a block, the left column is read before the right one when both sides hold at least
+  two rows, otherwise the block is read row by row (this keeps a contact row with items on both
+  sides together). Lines are kept in this order, so a section heading only collects the lines of
+  its own column.
 
 **DOCX.** `python-docx` gives paragraphs in body order, tables, and each section's header and
 footer. Text boxes are read from the raw XML (`w:txbxContent`), because `python-docx` does not
@@ -133,14 +148,20 @@ expose them; Word stores each box twice (DrawingML and a VML fallback) and only 
 Font size and boldness come from the runs, falling back to the paragraph style. Hyperlink targets
 are collected for 2.7 in both formats.
 
-### 2.1 Text layer (`min_chars_per_page = 50`)
+### 2.1 Text layer (`min_chars_per_page = 50`, `scan_image_coverage = 0.5`, `outline_min_curves = 200`)
 
-The number of non-whitespace characters on each page, `n_c`, is computed. If `n_c < 50`, the page
-is a scanned image or text converted to outlines → **critical** (it breaks every strategy; only
-an ATS that runs OCR would read it [4]).
+A PDF page has **no text layer** when it holds fewer than 50 non-whitespace characters **and** its
+content is a picture: an image covering at least half of the page, or at least 200 vector curves
+(text converted to outlines) → **critical** (it breaks every strategy; only an ATS that runs OCR
+would read it [4]). A DOCX with fewer than 50 characters in all is treated the same way.
 
 *Justification:* A typical resume page contains 1,500–3,000 characters (our observation). Below 50
-means only fragments such as a page number could be extracted.
+means only fragments such as a page number could be extracted. The picture condition was added
+after testing: a two-page resume whose second page held only the Languages section (39
+characters) was reported as a scan. A scanned page is one image over the whole page (coverage
+1.0 in the test set). Outlined text draws at least one curve per letter, so a page of it has well
+over a thousand curves, while decorations in the test set drew at most 18; 200 lies between the
+two, but no outlined resume has been measured yet.
 
 ### 2.2 Garbled characters (`garbled_warn = 0.02`, `garbled_critical = 0.10`)
 
@@ -156,33 +177,37 @@ map), `U+FFFD` (�) and the Unicode private use area `U+E000–U+F8FF` (icon fo
 *Justification:* Up to 2% can come from icons and bullet glyphs without hurting readability.
 Above 10%, words become unreadable.
 
-### 2.3 Multi-column layout (`gutter_min_width_pt = 15`, `gutter_max_coverage = 0.05`, `gutter_min_height = 0.5`, `gutter_x_range = [0.2, 0.8]`)
+### 2.3 Multi-column layout (`gutter_min_width_pt = 8`, `gutter_min_height = 0.5`, `gutter_x_range = [0.2, 0.8]`)
 
-The page width is split into 1-point slices. For each slice:
+A **gutter** is an empty vertical channel between two columns:
 
-```
-coverage(x) = lines whose box crosses the slice / total lines
-```
-
-A **gutter** is the widest continuous channel, between 20% and 80% of the page width and at least
-15 points wide, where `coverage(x) ≤ 0.05`, provided the lines on its left and on its right each
-span at least 50% of the page's text height.
+1. Between 20% and 80% of the page width, the page is scanned in 1-point slices. A channel is a
+   run of slices, at least 8 points wide, that share one vertical stretch of at least 50% of the
+   page's text height which no line crosses.
+2. The channel separates two columns when, within that stretch, each side holds a column of
+   **left-aligned text**: at least two rows that start at the same x and end at different x.
+3. The widest such channel is the gutter.
 
 On a page with a gutter, a reading **scrambles the columns** when its word order differs from the
-column-aware reading (as in 2.4), or when it puts text from the left and the right column of the
-same row on one output line. The finding is a **warning** naming the strategies that scramble the
-columns, or **info** when every strategy keeps them apart.
+column-aware reading (as in 2.4), or when it joins text from the left and the right column of the
+same row side by side on one output line. The finding is a **warning** naming the strategies that
+scramble the columns, or **info** when every strategy keeps them apart.
 
-*Found while testing:* with a narrow right column (one skill per row), position order glued each
-skill to the end of an experience line, yet kept 85% of the word order; the one-line test catches
-this case.
+*Justification:* Measured gutters in the test set are 14 to 53 points wide (a Word table used as a
+layout has the narrowest), while the gap between words is 3–5 points; 8 points separates the two.
+Requiring the empty stretch rather than a share of all lines lets a full-width header (name,
+contact, summary) sit above the columns. The left-alignment condition tells a column from a stack
+of right-aligned dates ("Jan 2021 – Present"), which end at the same x and start at different x.
+Columns are a problem only for readers that interleave them; Tika documents that position sorting
+"can interleave columns" [4]. Textkernel estimates that at least 15% of CVs use columns and
+describes its earlier rule-based detection of visual gaps, which this method resembles [6].
 
-*Justification:* The gap between columns is usually wider than 15 points, while the gap between
-words is 3–5 points. The 50% height condition avoids flagging single-column pages that only have
-side-by-side items in the header. Columns are a problem only for readers that interleave them;
-Tika documents that position sorting "can interleave columns" [4]. Textkernel estimates that at
-least 15% of CVs use columns and describes its earlier rule-based detection of visual gaps, which
-this method resembles [6].
+*Found while testing:* the first version required that at most 5% of all lines cross the channel
+and that each side span 50% of the text height. It missed Word's two-column and table layouts
+(the header crossed the channel; the right column was short) and, once relaxed, took right-aligned
+dates for a column. With a narrow right column (one skill per row), position order glued each
+skill to the end of an experience line yet kept 85% of the word order; the side-by-side test
+catches this case.
 
 ### 2.4 Reading order and lost words (`agreement_order_max = 0.85`)
 
@@ -439,6 +464,7 @@ test set is re-run and the result is recorded here.
 |---|---|---|
 | 0.1 | Starting values | — (no test set yet) |
 | 0.1 | `agreement_order_max` 0.7 → 0.85; reading order compared with the column-aware reading | Two real resumes (one single-column, one two-column): order-keeping readings 0.945–1.000, scrambled readings 0.608–0.707 |
+| 0.1 | Synthetic test set of 23 resumes (`tests/fixtures/synthetic/`, made with Chrome and Word). Words built from characters (`word_gap_pt` 3); scans need a picture (`scan_image_coverage` 0.5, `outline_min_curves` 200); gutter redefined as an empty channel beside left-aligned text, `gutter_min_width_pt` 15 → 8, `gutter_max_coverage` removed | All 23 agree with their labels. Gutters found in all 6 two-column PDFs (14–53 pt) and in none of the single-column ones; order of readings that keep the page's order 0.97–1.00 |
 
 ---
 

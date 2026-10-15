@@ -1,0 +1,2 @@
+must_not_find = ["columns_scramble", "no_email"]
+note = "A floating box beside one paragraph is not a column layout."

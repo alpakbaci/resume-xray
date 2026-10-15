@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import docx
 import pytest
 from docx.oxml import parse_xml
@@ -10,6 +12,7 @@ from resume_xray.models import Document, Page
 from resume_xray.readers import read_document
 from resume_xray.text import fold
 
+SYNTHETIC = Path(__file__).parent / "fixtures" / "synthetic"
 CONTACT = Text(50, 80, "jane.doe@example.com  +90 555 123 45 67")
 
 
@@ -44,16 +47,23 @@ def test_clean_resume_is_ok(tmp_path):
     assert report.fields == {"email": "jane.doe@example.com", "phone": "+90 555 123 45 67"}
 
 
-def test_page_without_text_is_unreadable(tmp_path):
-    report = report_for(tmp_path, [clean_resume(), []])
+def test_scanned_page_is_unreadable():
+    report = run_checks(read_document(SYNTHETIC / "scanned_single_column.pdf"))
 
     finding = next(f for f in report.findings if f.check == "2.1")
-    assert finding.severity == "critical" and finding.pages == (2,)
+    assert finding.severity == "critical" and finding.pages == (1,)
     assert report.verdict == "Unreadable"
 
 
+def test_short_last_page_is_not_a_scan(tmp_path):
+    # Found on a generated two-page resume: page 2 held only the Languages section.
+    report = report_for(tmp_path, [clean_resume(), [Text(50, 60, "LANGUAGES", size=13, bold=True), Text(50, 80, "English")]])
+
+    assert not any(f.check == "2.1" for f in report.findings)
+
+
 def test_two_columns_scramble_position_order(tmp_path):
-    left = [Text(50, 120 + 16 * i, f"Left column line {i} about backend work") for i in range(12)]
+    left = [Text(50, 120 + 16 * i, f"Left column line {i} about backend work" + " and APIs" * (i % 2)) for i in range(12)]
     right = [Text(330, 120 + 16 * i, f"Right item {i} skills") for i in range(12)]
     report = report_for(tmp_path, [[Text(50, 50, "Jane Doe", size=20, bold=True), CONTACT, *left, *right]])
 
@@ -160,7 +170,7 @@ def test_fold_matches_across_languages_and_case():
 def test_narrow_second_column_glued_to_lines_is_caught(tmp_path):
     # One short skill per row: word order barely changes, but position order glues each skill to
     # the end of an experience line.
-    left = [Text(50, 130 + 16 * i, f"Experience line number {i} about delivering products") for i in range(8)]
+    left = [Text(50, 130 + 16 * i, f"Experience line number {i} about delivering products" + " fast" * (i % 3)) for i in range(8)]
     right = [Text(380, 130 + 16 * i, skill) for i, skill in enumerate(["Jira", "Figma", "SQL", "Agile", "Scrum", "Excel", "Git", "Python"])]
     report = report_for(tmp_path, [[Text(50, 50, "Jane Doe", size=20, bold=True), CONTACT, *left, *right]])
 

@@ -1,0 +1,3 @@
+verdict = "Risky"
+must_find = ["heading_unknown", "section_missing", "vague_dates"]
+note = "'My Journey' and 'Toolbox' headings; 'Summer 2021' and 'Q2 2018' dates."

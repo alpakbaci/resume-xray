@@ -1,0 +1,4 @@
+verdict = "OK"
+must_not_find = ["no_email"]
+sections = ["experience", "education", "skills"]
+note = "In the PDF the header is ordinary page text."

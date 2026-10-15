@@ -1,0 +1,11 @@
+verdict = "Risky"
+must_find = ["bullets_misplaced", "order_differs"]
+sections = ["experience", "education", "skills"]
+note = "Real-resume pattern: shape bullet plus a 0.75 pt text bullet over the first letter. Chrome writes the positioned list items last in the content stream (inspected; the user's one-page resume shows the same)."
+
+[affects]
+bullets_misplaced = ["position"]
+order_differs = ["stream"]
+
+[not_affects]
+bullets_misplaced = ["stream"]

@@ -12,6 +12,7 @@ from resume_xray.layout import column_order, find_gutter, reading_order
 from resume_xray.models import Document, Line, Page, Word
 
 BOLD_FONT = re.compile(r"bold|black|heavy|semibold|demi", re.IGNORECASE)
+BULLETS = "•●▪■◦►"
 
 
 def read_pdf(source: BytesIO, name: str) -> Document:
@@ -25,20 +26,7 @@ def read_pdf(source: BytesIO, name: str) -> Document:
     with pdfplumber.open(source) as pdf:
         for index, page in enumerate(pdf.pages):
             number = index + 1
-            # Font details are taken per character rather than via extra_attrs, which would split a
-            # word wherever the font subset changes (e.g. "TÜBİTAK" whose İ comes from another subset).
-            words = [
-                Word(
-                    text=w["text"],
-                    x0=w["x0"],
-                    top=w["top"],
-                    x1=w["x1"],
-                    bottom=w["bottom"],
-                    font_size=median(c["size"] for c in w["chars"]),
-                    bold=sum(bool(BOLD_FONT.search(c["fontname"])) for c in w["chars"]) * 2 > len(w["chars"]),
-                )
-                for w in page.extract_words(return_chars=True)
-            ]
+            words = words_from_chars(page.chars, weights["reader"]["word_gap_pt"], row_overlap)
             lines = group_lines(words, number, row_overlap, split_gap)
             gutter = find_gutter(lines, float(page.width), weights["parseability"])
             # Keep lines in column-aware reading order, so sections follow their own column.
@@ -56,11 +44,57 @@ def read_pdf(source: BytesIO, name: str) -> Document:
                     words=words,
                     lines=lines,
                     char_count=sum(1 for c in page.chars if not c["text"].isspace()),
+                    image_coverage=min(1.0, sum((i["x1"] - i["x0"]) * (i["bottom"] - i["top"]) for i in page.images) / (float(page.width) * float(page.height))),
+                    curves=len(page.curves),
                     gutter=gutter,
                     links=[link["uri"] for link in page.hyperlinks if link.get("uri")],
                 )
             )
     return Document(name=name, kind="pdf", pages=pages)
+
+
+def words_from_chars(chars: list[dict], word_gap: float, row_overlap: float) -> list[Word]:
+    """Join characters into words in content-stream order (ALGORITHM.md §2.0).
+
+    A word ends at whitespace, at a horizontal gap wider than word_gap, when the text moves back
+    to the left, or when the next character does not overlap the word vertically (row_overlap).
+    Font and size never end a word: a letter taken from another font, with another height, stays
+    in its word (e.g. the İ of "TÜBİTAK" or a fallback "ı"). A round bullet is always a word of its
+    own."""
+    words: list[Word] = []
+    current: list[dict] = []
+
+    def flush():
+        if current:
+            words.append(Word(
+                text="".join(c["text"] for c in current),
+                x0=min(c["x0"] for c in current),
+                top=min(c["top"] for c in current),
+                x1=max(c["x1"] for c in current),
+                bottom=max(c["bottom"] for c in current),
+                font_size=median(c["size"] for c in current),
+                bold=sum(bool(BOLD_FONT.search(c["fontname"])) for c in current) * 2 > len(current),
+            ))
+            current.clear()
+
+    for char in chars:
+        if char["text"].isspace() or not char.get("upright", True):
+            flush()
+            continue
+        if char["text"] in BULLETS:
+            flush()
+            current.append(char)
+            flush()
+            continue
+        if current:
+            last = current[-1]
+            gap = char["x0"] - last["x1"]
+            overlap = _overlap_ratio(char["top"], char["bottom"], min(c["top"] for c in current), max(c["bottom"] for c in current))
+            if gap > word_gap or char["x0"] < last["x0"] - word_gap or overlap < row_overlap:
+                flush()
+        current.append(char)
+    flush()
+    return words
 
 
 def group_lines(words: list[Word], page: int, row_overlap: float, split_gap: float) -> list[Line]:

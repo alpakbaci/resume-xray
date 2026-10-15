@@ -10,6 +10,7 @@ from rapidfuzz import fuzz
 from rapidfuzz.distance import Indel
 
 from resume_xray.config import load_weights
+from resume_xray.layout import side
 from resume_xray.models import STRATEGY_NAMES, Document, Line
 from resume_xray.report import Finding, Report
 from resume_xray.text import BULLETS, fold, original_words, tokens
@@ -69,7 +70,16 @@ def structured_text(document: Document) -> str:
 
 def check_text_layer(document: Document, weights: dict) -> list[Finding]:
     minimum = weights["min_chars_per_page"]
-    empty = [p.number for p in document.pages if p.char_count < minimum]
+    if document.kind == "pdf":
+        # A short last page is not a scan: the page must also hold an image or outlined text.
+        empty = [
+            p.number
+            for p in document.pages
+            if p.char_count < minimum
+            and (p.image_coverage >= weights["scan_image_coverage"] or p.curves >= weights["outline_min_curves"])
+        ]
+    else:
+        empty = [p.number for p in document.pages if p.char_count < minimum]
     if not empty:
         return []
     where = f"Page {', '.join(map(str, empty))} has" if document.kind == "pdf" else "The document has"
@@ -220,18 +230,20 @@ def check_reading_order(document: Document, weights: dict) -> list[Finding]:
 
 
 def mixes_columns(page, text: str) -> bool:
-    """True when a reading puts text from both sides of the gutter on one output line."""
-    center = page.gutter.center
+    """True when a reading joins text from both sides of the gutter, side by side, on one line."""
     rows: dict[int, tuple[list[str], list[str]]] = {}
     for line in page.lines:
-        if line.bbox[2] <= center:
-            rows.setdefault(line.row, ([], []))[0].append(fold(line.text))
-        elif line.bbox[0] >= center:
-            rows.setdefault(line.row, ([], []))[1].append(fold(line.text))
-    output = [fold(line) for line in text.splitlines()]
+        where = side(line, page.gutter)
+        if where:
+            rows.setdefault(line.row, ([], []))[where == "right"].append(fold(line.text))
+    output = [f" {fold(line)} " for line in text.splitlines()]
     return any(
-        left and right and any(l in out and r in out for out in output for l in left for r in right)
+        f" {a} {b} " in out
         for left, right in rows.values()
+        for l in left if l
+        for r in right if r
+        for a, b in ((l, r), (r, l))
+        for out in output
     )
 
 

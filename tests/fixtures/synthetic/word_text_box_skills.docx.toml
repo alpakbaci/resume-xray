@@ -1,0 +1,6 @@
+verdict = "Risky"
+must_find = ["text_boxes"]
+note = "Skills in a floating text box beside the summary."
+
+[affects]
+text_boxes = ["body"]

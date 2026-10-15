@@ -1,0 +1,3 @@
+verdict = "OK"
+sections = ["experience", "education", "skills"]
+note = "Table cells are read cell by cell in the DOCX."
