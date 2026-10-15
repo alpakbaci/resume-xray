@@ -206,23 +206,6 @@ function renderKeywords(match) {
     groups.append(group);
   }
 
-  const suggestBox = $("suggest");
-  const suggestChips = $("suggest-chips");
-  suggestChips.replaceChildren();
-  for (const suggestion of match.suggestions || []) {
-    const button = el("button", "chip suggest-chip");
-    button.type = "button";
-    button.setAttribute("aria-label", s.add_kw(suggestion.wording));
-    button.append(el("span", "plus", "+"), el("span", "", suggestion.wording));
-    button.append(el("span", "said", suggestion.in_resume === "missing" ? s.not_in_resume : s.in_resume));
-    button.addEventListener("click", () => {
-      state.add.push(suggestion.wording);
-      analyze();
-    });
-    suggestChips.append(button);
-  }
-  suggestBox.hidden = !suggestChips.childElementCount;
-
   const checks = $("checks");
   checks.replaceChildren();
   const line = (label, text, good) => {

@@ -156,9 +156,6 @@ def format_match(match: MatchReport) -> str:
             if t.lost_in:
                 line += f"  (not found in {', '.join(STRATEGY_NAMES[s] for s in t.lost_in)})"
             out.append(line)
-    if match.suggestions:
-        listed = ", ".join(f"{s.wording} ({'in resume' if s.in_resume != 'missing' else 'not in resume'})" for s in match.suggestions)
-        out.append(f"\nMight also be keywords (not counted; add with --add): {listed}")
     out.append("")
     if not match.job_title and match.years_required is None and match.degree_required is None and all(
         t.source == "user" for t in match.terms

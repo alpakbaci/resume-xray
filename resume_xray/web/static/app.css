@@ -155,12 +155,6 @@ textarea:focus, input[type="text"]:focus { border-color: var(--cream); }
 .chip.no { background: rgba(215, 47, 47, .26); border-color: var(--red); color: #FFE2E2; }
 .chip.user { border-style: dotted; border-width: 1.5px; }
 .chip.part.user { border-color: var(--deep); }
-.suggest { margin: 6px 0 14px; }
-.suggest-head { margin: 0 0 8px; font-size: 14px; font-weight: 500; }
-.suggest-head .opt { font-weight: 400; color: var(--muted); }
-.chip.suggest-chip { background: transparent; border: 1.5px dotted var(--muted); color: var(--ink); }
-.chip.suggest-chip:hover { border-color: var(--cream); }
-.chip.suggest-chip .plus { color: var(--cream); font-size: 15px; line-height: 1; }
 .add { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 .add input { flex: 1; min-width: 200px; height: 38px; padding: 0 12px; }
 .add-error { margin: 8px 0 0; }

@@ -387,24 +387,6 @@ count:
 *Found on a real job description:* a product manager posting yielded 9 terms; "product strategy",
 "monetization", "experimentation" and "stakeholders" were not in the dictionary.
 
-**Suggestions** (`suggestion_limit = 12`). Words that are neither in the dictionary nor
-technical-looking are not counted, but up to 12 of them are shown as "might also be keywords", with
-whether the resume contains them. Clicking one adds it as a user term. They never affect coverage.
-A word is suggested when it has at least three letters, does not open its line (job-ad lines open
-with a verb: "Define", "Collaborate"), is not part of a hyphenated compound ("cross-functional"), and
-is not part of a term, the job title, a removed term or the list of common job-ad words
-(`resume_xray/data/generic_words.toml`). A two-word phrase is suggested when both words qualify,
-nothing separates them, and it appears twice or both words are capitalized ("Looker Studio").
-Suggestions are ordered: required before preferred, then by frequency, then capitalized, then
-longer.
-
-*Justification:* Taking every word of a job ad as a keyword was measured on a real product
-manager ad and the maintainer's resume: 100 content words, 63 reported missing, of which about
-three in four were filler ("ability", "fast", "looking"), while matches such as "across" and
-"including" inflated coverage to 37%. Counting them would reward copying the ad's sentences into a
-resume. Showing them as suggestions keeps what that method finds ("experimentation",
-"monetization", "Looker Studio") without letting filler into the score. 12 is a display choice.
-
 **One-word stems** (`word_form_max_extra = 2`): a one-word wording matches another form of the
 word only if their lengths differ by at most 2 letters. This applies to the job and the resume
 alike.
