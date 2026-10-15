@@ -49,6 +49,15 @@ QUESTIONS = [
      [("no", "No"), ("yes", "Yes")], "docx"),
 ]
 
+# Descriptive questions: they record what the resume looks like, so results can be broken down by
+# it ("agreement on resumes with a photo"), but they set no expectation.
+DESCRIBE = [
+    ("photo", "Is there a photo of the person? (Fotoğraf var mı?)"),
+    ("wide_gaps", "Are there unusually wide gaps inside lines or between parts of the page? (Satır içinde veya bölümler arasında alışılmadık geniş boşluklar var mı?)"),
+    ("unusual_fonts", "Are fonts very large, decorative or mixed in many styles? (Fontlar çok büyük, süslü ya da çok çeşitli mi?)"),
+    ("icons", "Are icons used instead of words, e.g. a phone or envelope symbol before contact details? (İkon kullanılmış mı?)"),
+]
+
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
 
@@ -139,6 +148,12 @@ def label_form(name: str) -> str:
         for k, t in CORE.items()
     )
     fields.insert(2, f"<fieldset><legend>Which sections have a clearly visible heading? (Hangi bölümlerin görünür bir başlığı var?)</legend>{checks}</fieldset>")
+    for key, question in DESCRIBE:
+        radios = "".join(
+            f'<label><input type="radio" name="{key}" value="{v}" required {"checked" if answers.get(key) == v else ""}> {t}</label>'
+            for v, t in (("no", "No"), ("yes", "Yes"))
+        )
+        fields.append(f"<fieldset><legend>{question}</legend>{radios}</fieldset>")
     sources = "".join(f'<option {"selected" if answers.get("source") == s else ""}>{s}</option>' for s in SOURCES)
     fields.append(f'<fieldset><legend>Made with (Ne ile yapılmış?)</legend><select name="source">{sources}</select></fieldset>')
     langs = "".join(f'<label><input type="radio" name="language" value="{v}" required {"checked" if answers.get("language") == v else ""}> {v}</label>' for v in ("en", "tr", "other"))
@@ -152,7 +167,7 @@ def label_form(name: str) -> str:
 async def save_label(name: str, request: Request) -> RedirectResponse:
     path = resume(name)
     form = await request.form()
-    answers = {key: form.get(key) for key, *_ in QUESTIONS if form.get(key)}
+    answers = {key: form.get(key) for key, *_ in [*QUESTIONS, *DESCRIBE] if form.get(key)}
     answers.update(sections=form.getlist("sections"), source=form.get("source", "Unknown"),
                    language=form.get("language", ""), comment=form.get("comment", "").strip())
     label_file(path).write_text(to_toml(build_label(answers, path.suffix.lower())), encoding="utf-8")
@@ -186,8 +201,11 @@ def build_label(a: dict, suffix: str) -> dict:
     if a.get("selectable") != "no":
         missing = [s for s in CORE if s not in a["sections"]]
         expect(bool(missing), "section_missing")
+    traits = [key.replace("_", " ") for key, _ in DESCRIBE if a.get(key) == "yes"]
     note = (f"Labeled blind, before running resume-xray, on {date.today().isoformat()}. "
-            f"Made with {a['source']}; language {a['language']}." + (f" {a['comment']}" if a["comment"] else ""))
+            f"Made with {a['source']}; language {a['language']}."
+            + (f" Has: {', '.join(traits)}." if traits else "")
+            + (f" {a['comment']}" if a["comment"] else ""))
     label = {"must_find": find, "must_not_find": avoid, "sections": a["sections"], "note": note}
     if affects:
         label["affects"] = affects

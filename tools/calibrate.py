@@ -67,6 +67,9 @@ def main(args: list[str]) -> int:
             print("    (no label)")
             continue
         problems = compare(report, label)
+        traits = [k for k, v in label.get("answers", {}).items() if v == "yes" and k in ("photo", "wide_gaps", "unusual_fonts", "icons")]
+        if traits:
+            print("    traits:", ", ".join(traits))
         failures += bool(problems)
         for problem in problems:
             print("    ✖", problem)
