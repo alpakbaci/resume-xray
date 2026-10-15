@@ -5,8 +5,11 @@ import tomllib
 from pathlib import Path
 
 SYNTHETIC = Path(__file__).parent / "fixtures" / "synthetic"
-# Private resumes stay on the maintainer's computer and are never committed.
-PRIVATE = Path(os.environ.get("RESUME_XRAY_PRIVATE", "~/resume-xray-private")).expanduser()
+# Private resumes stay on the maintainer's computer and are never committed. They are tested only
+# when RESUME_XRAY_PRIVATE names their folder, so a routine `pytest` never reveals results to someone
+# who is still labeling them blind.
+PRIVATE_DEFAULT = Path("~/resume-xray-private").expanduser()
+PRIVATE = Path(os.environ["RESUME_XRAY_PRIVATE"]).expanduser() if os.environ.get("RESUME_XRAY_PRIVATE") else None
 
 
 def labeled_resumes(*folders: Path) -> list[Path]:

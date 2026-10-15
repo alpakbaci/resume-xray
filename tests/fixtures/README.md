@@ -45,8 +45,9 @@ it was decided.
 
 Real resumes (Canva, LinkedIn, job sites, your own) are the most valuable test cases, but they
 cannot be committed: they hold personal data and their templates are often copyrighted. Keep them
-in `~/resume-xray-private/` (or the folder named by `RESUME_XRAY_PRIVATE`), each with a label.
-`pytest` checks them when the folder exists, and nowhere else.
+in `~/resume-xray-private/`, each with a label. A plain `pytest` never reads them, so it cannot
+reveal results while labeling is in progress; to include them, name the folder:
+`RESUME_XRAY_PRIVATE=~/resume-xray-private pytest`.
 
 They are a **hold-out set**, labeled blind:
 

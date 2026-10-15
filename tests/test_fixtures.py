@@ -6,7 +6,7 @@ from labels import PRIVATE, SYNTHETIC, compare, labeled_resumes, load_label
 from resume_xray.checks import run_checks
 from resume_xray.readers import read_document
 
-RESUMES = labeled_resumes(SYNTHETIC, PRIVATE)
+RESUMES = labeled_resumes(SYNTHETIC, *([PRIVATE] if PRIVATE else []))
 
 
 def test_synthetic_set_is_labeled():
