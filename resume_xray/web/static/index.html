@@ -132,6 +132,10 @@
       <h3 data-i18n="kw_title">Keywords from the job</h3>
       <div class="bar" id="bar" role="img"></div>
       <div id="groups"></div>
+      <div class="suggest" id="suggest" hidden>
+        <p class="suggest-head"><span data-i18n="suggest_title">Might also be keywords</span> <span class="opt" data-i18n="suggest_hint">not counted yet; click one to count it as a required keyword</span></p>
+        <div id="suggest-chips"></div>
+      </div>
       <form class="add" id="add-form">
         <label class="visually-hidden" for="add-input" data-i18n="add_label">Add a keyword</label>
         <input id="add-input" type="text" autocomplete="off" data-i18n-placeholder="add_placeholder" placeholder="Add a keyword, e.g. Scrum Master">

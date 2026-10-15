@@ -1,0 +1,43 @@
+# Words that are common in job ads but are not keywords anyone searches for (ALGORITHM.md §3.2,
+# suggestions). They are never suggested. Compared by stem, so one form of a word is enough.
+
+en = [
+  # function words
+  "a", "an", "the", "and", "or", "but", "nor", "of", "to", "in", "on", "for", "with", "by", "at", "from", "as", "into", "onto",
+  "over", "under", "about", "across", "through", "during", "before", "after", "between", "within", "without", "via", "per",
+  "is", "are", "was", "were", "be", "been", "being", "do", "does", "did", "have", "has", "had", "will", "would", "can", "could",
+  "should", "may", "might", "must", "shall", "you", "your", "yours", "we", "our", "ours", "us", "they", "them", "their", "it",
+  "its", "this", "that", "these", "those", "who", "whom", "which", "what", "when", "where", "why", "how", "all", "any", "both",
+  "each", "every", "either", "neither", "more", "most", "other", "some", "such", "no", "not", "only", "own", "same", "so",
+  "than", "too", "very", "just", "also", "well", "etc", "e.g", "i.e", "plus", "then", "there", "here", "if", "while", "whether",
+  # words every job ad uses
+  "ability", "able", "work", "working", "job", "role", "position", "team", "teams", "company", "candidate", "opportunity",
+  "experience", "experienced", "year", "years", "strong", "excellent", "good", "great", "solid", "proven", "deep", "broad",
+  "high", "highly", "new", "key", "main", "core", "related", "relevant", "similar", "various", "multiple", "least", "minimum",
+  "preferred", "required", "requirement", "requirements", "responsibility", "responsibilities", "qualification",
+  "qualifications", "skill", "skills", "knowledge", "understanding", "familiarity", "background", "degree", "plus", "bonus",
+  "looking", "seeking", "join", "help", "helping", "make", "making", "build", "building", "create", "drive", "driving",
+  "deliver", "delivering", "ensure", "support", "supporting", "provide", "use", "using", "including", "include", "across",
+  "closely", "together", "day", "daily", "world", "worldwide", "millions", "people", "fast", "paced", "environment",
+  "growing", "dynamic", "exciting", "passionate", "motivated", "self", "detail", "oriented", "focus", "focused", "approach",
+  "area", "areas", "level", "senior", "junior", "mid", "lead", "leading", "clear", "future", "depending", "either", "own",
+  "owning", "ownership", "best", "practice", "practices", "impact", "impactful", "exceptional", "continuous", "continuously",
+  # verbs of job-ad duties
+  "align", "collaborate", "define", "develop", "execute", "improve", "manage", "mentor", "raise", "shape", "turn", "decide",
+  "decision", "decisions", "partner", "contribute", "communicate", "identify", "translate", "maintain", "operate", "scale",
+  "launch", "iterate", "iteration", "influence", "end", "run", "track", "perform", "handle", "prepare", "conduct",
+]
+
+tr = [
+  # function words
+  "ve", "veya", "ile", "ya", "da", "de", "ki", "bir", "bu", "şu", "o", "için", "gibi", "kadar", "olan", "olarak", "olmak",
+  "en", "az", "çok", "her", "tüm", "bütün", "daha", "ise", "ama", "fakat", "ancak", "hem", "ne", "mi", "biz", "siz", "sen",
+  "bizim", "sizin", "üzerinde", "içinde", "arasında", "sonra", "önce", "tarafından", "hakkında", "konusunda", "ilgili",
+  # words every job ad uses
+  "aday", "adaylar", "pozisyon", "görev", "görevler", "sorumluluk", "sorumluluklar", "ekip", "ekibimiz", "takım", "şirket",
+  "şirketimiz", "firma", "deneyim", "deneyimli", "tecrübe", "tecrübeli", "yıl", "yıllık", "en az", "güçlü", "iyi", "iyi derecede",
+  "yüksek", "yeni", "ilgili", "benzer", "çeşitli", "tercihen", "tercih", "sebebi", "aranan", "nitelik", "nitelikler", "beceri",
+  "bilgi", "bilgisi", "sahip", "sahibi", "olan", "arıyoruz", "katılacak", "çalışacak", "çalışma", "yapmak", "sağlamak",
+  "destek", "dahil", "konu", "alan", "alanında", "seviye", "seviyede", "kıdemli", "uzman", "hızlı", "dinamik", "motivasyonu",
+  "takım çalışmasına", "yatkın", "yetkinlik", "yetkinliği",
+]

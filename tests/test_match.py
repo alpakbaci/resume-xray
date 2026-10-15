@@ -175,3 +175,29 @@ def test_title_needs_the_exact_phrase(tmp_path):
     document, report = resume(tmp_path, "EXPERIENCE", "Project Manager, Acme, 2021 - 2023")
     assert match_job(document, "", report.section_lines, title="Product Manager").title_match is None
     assert match_job(document, "", report.section_lines, title="Project Manager").title_match.startswith("Project Manager")
+
+
+def test_suggestions_are_not_counted_and_skip_noise():
+    job = parse_job(
+        "Senior Data Analyst\nRequirements\n- 3+ years of experience with SQL and Power BI\n"
+        "- Build dashboards in Looker Studio and maintain dbt models\n"
+        "- Strong cross-functional communication and data-driven decisions\n"
+        "- Experience with Looker Studio and Snowflake\n"
+    )
+    words = [s.wording for s in job.suggestions]
+    assert "Looker Studio" in words and "dbt" in words and "Snowflake" in words
+    # Not suggested: terms, the title, line-opening verbs, hyphen parts and common job-ad words.
+    for noise in ("SQL", "Analyst", "Build", "cross", "driven", "Strong", "experience", "years"):
+        assert noise not in words
+    assert all(t.name != "Looker Studio" for t in job.terms)
+
+
+def test_added_suggestion_becomes_a_required_term(tmp_path):
+    document, report = resume(tmp_path, "EXPERIENCE", "Built Looker Studio dashboards", "SKILLS", "SQL")
+    job = "Requirements\nDashboards in Looker Studio and Looker Studio reports\n"
+    before = match_job(document, job, report.section_lines)
+    assert [s.wording for s in before.suggestions][0] == "Looker Studio"
+    assert before.suggestions[0].in_resume == "exact"
+    after = match_job(document, job, report.section_lines, add=["Looker Studio"])
+    assert any(t.name == "Looker Studio" and t.level == "exact" for t in after.terms)
+    assert "Looker Studio" not in [s.wording for s in after.suggestions]

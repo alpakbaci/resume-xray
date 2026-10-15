@@ -389,6 +389,24 @@ son olarak kullanıcı karar verir:
 *Gerçek bir ilanda bulundu:* bir ürün yöneticisi ilanından 9 terim çıktı; "product strategy",
 "monetization", "experimentation" ve "stakeholders" sözlükte yoktu.
 
+**Öneriler** (`suggestion_limit = 12`). Sözlükte olmayan ve teknik görünmeyen kelimeler sayılmaz,
+ama bunlardan en fazla 12'si, CV'de geçip geçmedikleriyle birlikte "bunlar da anahtar kelime
+olabilir" olarak gösterilir. Birine tıklamak onu kullanıcı terimi olarak ekler. Öneriler kapsamayı
+asla etkilemez. Bir kelime şu koşullarda önerilir: en az üç harfli, satırını açan kelime değil (ilan
+satırları fiille açılır: "Define", "Collaborate"), tireli bir birleşik kelimenin parçası değil
+("cross-functional") ve bir terimin, pozisyon adının, çıkarılmış bir terimin ya da yaygın ilan
+kelimeleri listesinin (`resume_xray/data/generic_words.toml`) parçası değil. İki kelimelik bir ifade,
+iki kelimesi de uygunsa, aralarında bir şey yoksa ve iki kez geçiyorsa ya da iki kelimesi de büyük
+harfle başlıyorsa önerilir ("Looker Studio"). Sıralama: önce zorunlu, sonra tercihli; sonra sıklık;
+sonra büyük harfle başlayanlar; sonra uzun olanlar.
+
+*Gerekçe:* İlandaki her kelimeyi anahtar kelime saymak, gerçek bir ürün yöneticisi ilanı ve bakımcının
+CV'siyle ölçüldü: 100 içerik kelimesi, 63'ü eksik bildirildi ve bunların kabaca dörtte üçü dolgu
+kelimeydi ("ability", "fast", "looking"); "across" ve "including" gibi eşleşmeler de kapsamayı %37'ye
+şişirdi. Bunları saymak, ilanın cümlelerini CV'ye kopyalamayı ödüllendirirdi. Öneri olarak göstermek,
+o yöntemin bulduklarını ("experimentation", "monetization", "Looker Studio") korurken dolgu
+kelimelerin puana girmesini önler. 12 bir gösterim tercihidir.
+
 **Tek kelimelik kökler** (`word_form_max_extra = 2`): tek kelimelik bir yazım, kelimenin başka bir
 biçimiyle ancak uzunlukları en fazla 2 harf farklıysa eşleşir. Bu kural ilan ve CV için aynıdır.
 

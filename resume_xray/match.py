@@ -143,6 +143,17 @@ class JobDescription:
     title: str | None
     terms: list[JobTerm]
     lines: list[tuple[str, float]]  # (line, requirement factor) for lines that count
+    suggestions: list["Suggestion"] = field(default_factory=list)
+
+
+@dataclass
+class Suggestion:
+    """A word or phrase of the job that may be a keyword. Not counted until the user adds it."""
+
+    wording: str
+    count: int
+    required: bool
+    in_resume: Level = "missing"
 
 
 def section_kind(line: str, weights: dict) -> str | None:
@@ -220,7 +231,70 @@ def parse_job(text: str, title: str | None = None, add: list[str] = (), remove: 
 
     removed = {fold(n) for n in remove if n.strip()}
     kept = [t for t in terms.values() if not ({fold(t.name), *map(fold, t.wordings)} & removed)]
-    return JobDescription(language, title, kept, counted)
+    suggestions = suggest(counted, title, language, list(terms.values()), list(remove), mw)
+    return JobDescription(language, title, kept, counted, suggestions)
+
+
+@cache
+def generic_stems(language: str) -> frozenset[str]:
+    words = _data("generic_words.toml").get(language, []) + _data("generic_words.toml")["en"]
+    return frozenset(t.stem for w in words for t in analyze(w, language))
+
+
+def suggest(lines, title, language, terms, removed, weights) -> list[Suggestion]:
+    """Words and two-word phrases of the job that are not terms yet (ALGORITHM.md §3.2).
+
+    A word qualifies when it has at least three letters, does not open its line (job-ad lines open
+    with a verb), is not part of a hyphenated compound, and is not a common job-ad word or part of a
+    term, the title or a removed term. A two-word phrase qualifies when both words do,
+    nothing separates them, and it appears twice or both words are capitalized ("Looker Studio").
+    Order: required before preferred, then more frequent, then capitalized, then longer."""
+    generic = generic_stems(language)
+    taken = {t.stem for w in [title or "", *removed] for t in analyze(w, language)}
+    for term in terms:
+        wordings = term.wordings + (skills()[term.key] if term.key in skills() else [])
+        taken |= {t.stem for w in wordings for t in analyze(w, language)}
+
+    def ok(token: Token) -> bool:
+        letters = sum(c.isalpha() for c in token.original)
+        return letters >= 3 and token.stem not in generic and token.surface not in generic and token.stem not in taken
+
+    def capitalized(token: Token, index: int) -> bool:
+        return index > 0 and token.original[:1].isupper()
+
+    found: dict[tuple, dict] = {}
+
+    def note(key: tuple, wording: str, required: bool, capital: bool) -> None:
+        entry = found.setdefault(key, {"wording": wording, "count": 0, "required": False, "capital": True})
+        entry["count"] += 1
+        entry["required"] |= required
+        entry["capital"] &= capital
+
+    for line, requirement in lines:
+        if line == title:
+            continue
+        tokens = analyze(line, language)
+        required = requirement >= weights["required_weight"]
+        for i, token in enumerate(tokens):
+            # Job-ad lines usually open with a verb ("Define", "Collaborate"), and parts of hyphenated
+            # compounds ("cross-functional", "data-driven") are not keywords on their own.
+            hyphenated = line[token.end : token.end + 1] == "-" or line[token.start - 1 : token.start] == "-"
+            if i == 0 or hyphenated or not ok(token):
+                continue
+            note((token.stem,), token.original, required, capitalized(token, i))
+            if i + 1 < len(tokens) and ok(nxt := tokens[i + 1]) and not line[token.end:nxt.start].strip() and line[nxt.end : nxt.end + 1] != "-":
+                note((token.stem, nxt.stem), span_text(line, [token, nxt]), required, capitalized(token, i) and capitalized(nxt, i + 1))
+
+    phrases = {k: v for k, v in found.items() if len(k) == 2 and (v["count"] >= 2 or v["capital"])}
+    words = {
+        k: v for k, v in found.items()
+        if len(k) == 1 and v["count"] > sum(p["count"] for pk, p in phrases.items() if k[0] in pk)
+    }
+    ranked = sorted(
+        {**phrases, **words}.items(),
+        key=lambda kv: (not kv[1]["required"], -kv[1]["count"], not kv[1]["capital"], -len(kv[0]), kv[1]["wording"].lower()),
+    )
+    return [Suggestion(v["wording"], v["count"], v["required"]) for _, v in ranked[: weights["suggestion_limit"]]]
 
 
 def dictionary_key(name: str) -> str | None:
@@ -266,6 +340,7 @@ class MatchReport:
     years_in_resume: float | None = None
     degree_required: str | None = None
     degree_in_resume: str | None = None
+    suggestions: list[Suggestion] = field(default_factory=list)
 
 
 def match_job(
@@ -317,6 +392,10 @@ def match_job(
         terms=sorted(results, key=lambda r: (r.kind != "required", -r.weight, r.name.lower())),
     )
     report.title_match = _title_match(job.title, document, language)
+    for suggestion in job.suggestions:
+        pattern = analyze(suggestion.wording, language)
+        suggestion.in_resume = "exact" if find(resume, pattern, "surface") else "word_form" if find(resume, pattern, "stem") else "missing"
+    report.suggestions = job.suggestions
     report.years_required = _years_required(job)
     report.years_in_resume = _years_in_resume(line_sections)
     report.degree_required = _degree(" ".join(line for line, _ in job.lines), lowest=True)
