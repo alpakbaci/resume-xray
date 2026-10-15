@@ -12,11 +12,17 @@ PRIVATE_DEFAULT = Path("~/resume-xray-private").expanduser()
 PRIVATE = Path(os.environ["RESUME_XRAY_PRIVATE"]).expanduser() if os.environ.get("RESUME_XRAY_PRIVATE") else None
 
 
+def is_resume(path: Path) -> bool:
+    """A PDF or DOCX, but not the lock file Word ("~$name.docx") or LibreOffice (".~lock") keeps
+    next to an open document."""
+    return path.suffix.lower() in (".pdf", ".docx") and not path.name.startswith(("~$", ".~lock", "."))
+
+
 def labeled_resumes(*folders: Path) -> list[Path]:
     return sorted(
         p for folder in folders if folder.is_dir()
         for p in folder.iterdir()
-        if p.suffix.lower() in (".pdf", ".docx") and label_path(p).exists()
+        if is_resume(p) and label_path(p).exists()
     )
 
 

@@ -86,7 +86,8 @@ def pages_of(path: Path) -> tuple[bytes, ...]:
 
 
 def resumes() -> list[Path]:
-    return sorted(p for p in FOLDER.iterdir() if p.suffix.lower() in (".pdf", ".docx"))
+    # Skip the lock files Word ("~$name.docx") and LibreOffice (".~lock") keep next to open documents.
+    return sorted(p for p in FOLDER.iterdir() if p.suffix.lower() in (".pdf", ".docx") and not p.name.startswith(("~$", ".~lock", ".")))
 
 
 def resume(name: str) -> Path:

@@ -22,11 +22,11 @@ from resume_xray.text import tokens
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests"))
-from labels import SYNTHETIC, compare, label_path, load_label  # noqa: E402
+from labels import SYNTHETIC, compare, is_resume, label_path, load_label  # noqa: E402
 
 
 def resumes(folders: list[Path]) -> list[Path]:
-    return sorted(p for folder in folders for p in folder.iterdir() if p.suffix.lower() in (".pdf", ".docx"))
+    return sorted(p for folder in folders for p in folder.iterdir() if is_resume(p))
 
 
 def measurements(document) -> list[str]:
