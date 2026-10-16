@@ -1,5 +1,5 @@
 // Interface text in English and Turkish. Findings are phrased here from their code and params,
-// in plain words (DESIGN.md, "Language"). No em dashes in UI copy.
+// in plain words. No em dashes in UI copy.
 "use strict";
 
 const list = (items, lang) => {

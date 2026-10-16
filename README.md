@@ -136,10 +136,10 @@ resume correctly.
 
 ## Contributing
 
-Run the tests with `pip install -e ".[dev]"` and `pytest`. The design of the page is described in
-[DESIGN.md](DESIGN.md) and the plan in [ROADMAP.md](ROADMAP.md). Dependencies must be MIT, BSD or
+Run the tests with `pip install -e ".[dev]"` and `pytest`. Dependencies must be MIT, BSD or
 Apache-2.0 licensed, and every value the checks use lives in
-[resume_xray/config/weights.toml](resume_xray/config/weights.toml).
+[resume_xray/config/weights.toml](resume_xray/config/weights.toml), explained in
+[ALGORITHM.md](ALGORITHM.md).
 
 ## License
 
