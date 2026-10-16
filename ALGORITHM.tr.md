@@ -369,7 +369,11 @@ uzun bir ilk satır başlık değil cümledir.
 **Terimler.**
 
 - **Yetenek sözlüğü** (`resume_xray/data/skills.toml`): her yetenek, aynı anlama gelen tüm
-  yazımlarını listeler (`Kubernetes`, `K8s`). İlan **kök** ile, en uzun yazımlar önce ve örtüşmeden
+  yazımlarını listeler (`Kubernetes`, `K8s`). Sözlüğü proje, sektör kullanımına göre yönetir;
+  kayıtların dış kaynağı yoktur. Yazımlar ancak işe alımcı birinin yerine diğeriyle arama
+  yapabiliyorsa aynı kayıtta durur: kısaltma, çeviri, yazım farkı ya da yeniden adlandırılmış ürün.
+  Bir yeteneğin parçaları, sürümleri ve ilişkili ama farklı yetenekler (UI ve UX, Scrum ve Agile)
+  ayrı kayıtlardır. İlan **kök** ile, en uzun yazımlar önce ve örtüşmeden
   taranır; böylece "React Native" ayrıca "React" sayılmaz. İlanın kullandığı yazım saklanır. Bir
   veya iki karakterli yazımlar (`R`, `C`, `Go`, `UI`) büyük/küçük harf olarak da eşleşmelidir.
 - **Sözlükte olmayan teknik görünümlü kelimeler:** harfle birlikte rakam, `+` veya `#` içeren,

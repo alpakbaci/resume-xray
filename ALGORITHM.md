@@ -368,7 +368,11 @@ longer first line is a sentence, not a title.
 **Terms.**
 
 - **Skill dictionary** (`resume_xray/data/skills.toml`): each skill lists every wording that means
-  it (`Kubernetes`, `K8s`). The job is searched by **stem**, longest wordings first, without
+  it (`Kubernetes`, `K8s`). The dictionary is maintained by the project from industry usage and
+  carries no external source. Wordings share an entry only if a recruiter could search for one
+  instead of the other: an abbreviation, a translation, a spelling variant or a renamed product.
+  Parts of a skill, versions and related but different skills (UI and UX, Scrum and Agile) are
+  separate entries. The job is searched by **stem**, longest wordings first, without
   overlaps, so "React Native" is not also counted as "React". The wording the job actually used is
   kept. Wordings of one or two characters (`R`, `C`, `Go`, `UI`) must also match capitals.
 - **Technical-looking words** not in the dictionary: words with a letter and a digit, `+` or `#`,

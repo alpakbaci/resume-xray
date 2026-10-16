@@ -175,3 +175,15 @@ def test_title_needs_the_exact_phrase(tmp_path):
     document, report = resume(tmp_path, "EXPERIENCE", "Project Manager, Acme, 2021 - 2023")
     assert match_job(document, "", report.section_lines, title="Product Manager").title_match is None
     assert match_job(document, "", report.section_lines, title="Project Manager").title_match.startswith("Project Manager")
+
+
+def test_skill_dictionary_has_no_wording_in_two_entries():
+    from resume_xray.match import skills
+
+    seen = {}
+    for key, wordings in skills().items():
+        for wording in wordings:
+            # The same keys matching uses: C++, C# and C stay apart.
+            k = " ".join(t.surface for t in analyze(wording, "en"))
+            assert k not in seen, f"{wording!r} is in {seen.get(k)} and {key}"
+            seen[k] = key

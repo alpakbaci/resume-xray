@@ -1,4 +1,10 @@
-# Skill dictionary used by job matching (ALGORITHM.md §3.2).
+# Skill dictionary used by job matching (ALGORITHM.md §3.2). Maintained by the project from industry
+# usage; entries carry no external source.
+#
+# Synonyms rule: two wordings share an entry only if a recruiter could search for one instead of
+# the other: an abbreviation (K8s), a translation (Proje Yönetimi), a spelling variant (Postgres) or
+# a renamed product. Parts of a skill, versions and related but different skills (UI and UX, Scrum
+# and Agile) get entries of their own.
 # Key: canonical name. Value: every wording that means the same skill; the first one is shown to
 # users. Wordings of one or two characters (R, C, Go, UI, ML) only match with the same capitals,
 # so that ordinary words are not taken for skills. A resume that uses a different wording than the job description gets partial credit
@@ -90,7 +96,10 @@ ansible = ["Ansible"]
 jenkins = ["Jenkins"]
 github_actions = ["GitHub Actions"]
 gitlab_ci = ["GitLab CI", "GitLab CI/CD"]
-ci_cd = ["CI/CD", "Continuous Integration", "Continuous Delivery", "Continuous Deployment"]
+ci_cd = ["CI/CD"]
+continuous_integration = ["Continuous Integration"]
+continuous_delivery = ["Continuous Delivery"]
+continuous_deployment = ["Continuous Deployment"]
 git = ["Git"]
 linux = ["Linux"]
 devops = ["DevOps"]
@@ -123,7 +132,9 @@ sdlc = ["SDLC", "Software Development Life Cycle"]
 
 # Design and marketing
 figma = ["Figma"]
-ui_ux = ["UI/UX", "UX", "UI", "User Experience", "Kullanıcı Deneyimi"]
+ui_ux = ["UI/UX"]
+ux = ["UX", "User Experience", "Kullanıcı Deneyimi", "UX Design"]
+ui = ["UI", "User Interface", "Kullanıcı Arayüzü", "UI Design"]
 adobe_photoshop = ["Photoshop", "Adobe Photoshop"]
 seo = ["SEO", "Search Engine Optimization"]
 sem = ["SEM", "Search Engine Marketing"]
