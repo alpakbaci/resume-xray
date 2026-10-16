@@ -374,7 +374,9 @@ longer first line is a sentence, not a title.
   Parts of a skill, versions and related but different skills (UI and UX, Scrum and Agile) are
   separate entries. The job is searched by **stem**, longest wordings first, without
   overlaps, so "React Native" is not also counted as "React". The wording the job actually used is
-  kept. Wordings of one or two characters (`R`, `C`, `Go`, `UI`) must also match capitals.
+  kept. Wordings of one or two characters (`R`, `C`, `Go`, `UI`) must also match capitals, and so
+  must longer wordings marked with a leading `=` in the dictionary, for acronyms that are also
+  ordinary words (`=GEO` matches "GEO" but not "geo-targeting").
 - **Technical-looking words** not in the dictionary: words with a letter and a digit, `+` or `#`,
   CamelCase (`PostgreSQL`, `ISO27001`, `iOS`), or acronyms of two or more capital letters
   (`ARPU`, `LTV`, `AI`).

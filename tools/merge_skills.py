@@ -26,7 +26,7 @@ DICTIONARY = Path(__file__).resolve().parents[1] / "resume_xray" / "data" / "ski
 
 
 def keys(wording: str) -> tuple[str, str]:
-    tokens = analyze(wording, "en")
+    tokens = analyze(wording.removeprefix("="), "en")
     return " ".join(t.surface for t in tokens), " ".join(t.stem for t in tokens)
 
 

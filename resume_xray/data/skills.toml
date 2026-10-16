@@ -7,7 +7,8 @@
 # and Agile) get entries of their own.
 # Key: canonical name. Value: every wording that means the same skill; the first one is shown to
 # users. Wordings of one or two characters (R, C, Go, UI, ML) only match with the same capitals,
-# so that ordinary words are not taken for skills. A resume that uses a different wording than the job description gets partial credit
+# so that ordinary words are not taken for skills. A longer wording that is also an ordinary word
+# can be marked the same way with a leading "=": "=GEO" matches GEO but not geo. A resume that uses a different wording than the job description gets partial credit
 # (synonym_match), because a recruiter's keyword search for the job's wording would miss it.
 # Hand-curated starting list; contributions welcome.
 
@@ -304,8 +305,8 @@ off_page_seo = ["Off-page SEO"]
 link_building = ["Link Building", "Backlink Building"]
 seo_audit = ["SEO Audit"]
 local_seo = ["Local SEO"]
-geo = ["Generative Engine Optimization"]
-aio = ["AI Optimization"]
+geo = ["=GEO", "Generative Engine Optimization"]
+aio = ["=AIO", "AI Optimization"]
 meta_ads = ["Meta Ads", "Facebook Ads"]
 instagram_ads = ["Instagram Ads"]
 linkedin_ads = ["LinkedIn Ads"]

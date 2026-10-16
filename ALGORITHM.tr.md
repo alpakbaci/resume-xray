@@ -375,7 +375,9 @@ uzun bir ilk satır başlık değil cümledir.
   Bir yeteneğin parçaları, sürümleri ve ilişkili ama farklı yetenekler (UI ve UX, Scrum ve Agile)
   ayrı kayıtlardır. İlan **kök** ile, en uzun yazımlar önce ve örtüşmeden
   taranır; böylece "React Native" ayrıca "React" sayılmaz. İlanın kullandığı yazım saklanır. Bir
-  veya iki karakterli yazımlar (`R`, `C`, `Go`, `UI`) büyük/küçük harf olarak da eşleşmelidir.
+  veya iki karakterli yazımlar (`R`, `C`, `Go`, `UI`) büyük/küçük harf olarak da eşleşmelidir;
+  sözlükte başına `=` konmuş daha uzun yazımlar da öyle: bunlar aynı zamanda sıradan bir kelime olan
+  kısaltmalar içindir (`=GEO`, "GEO" ile eşleşir, "geo-targeting" ile eşleşmez).
 - **Sözlükte olmayan teknik görünümlü kelimeler:** harfle birlikte rakam, `+` veya `#` içeren,
   CamelCase yazılan (`PostgreSQL`, `ISO27001`, `iOS`) ya da en az iki büyük harften oluşan
   kısaltmalar (`ARPU`, `LTV`, `AI`).

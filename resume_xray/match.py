@@ -86,19 +86,20 @@ def span_text(text: str, tokens: list[Token]) -> str:
 
 def find(tokens: list[Token], pattern: list[Token], by: str) -> list[int]:
     """Start positions where `pattern` occurs in `tokens`, comparing surface or stem keys.
-    A one-token pattern of at most two characters must also match its capitals; a one-token
-    pattern compared by stem must be close in length (word_form_max_extra)."""
+    A one-token pattern of at most two characters, or a wording marked case-sensitive in the
+    dictionary, must also match its capitals; a one-token pattern compared by stem must be close
+    in length (word_form_max_extra)."""
     n = len(pattern)
     if not n:
         return []
-    strict = n == 1 and len(pattern[0].original) <= 2
+    strict = (n == 1 and len(pattern[0].original) <= 2) or case_sensitive(" ".join(t.original for t in pattern))
     max_extra = load_weights()["match"]["word_form_max_extra"]
     hits = []
     for i in range(len(tokens) - n + 1):
         window = tokens[i : i + n]
         if not all(getattr(a, by) == getattr(b, by) for a, b in zip(window, pattern)):
             continue
-        if strict and window[0].original != pattern[0].original:
+        if strict and [t.original for t in window] != [t.original for t in pattern]:
             continue
         if by == "stem" and n == 1 and abs(len(window[0].surface) - len(pattern[0].surface)) > max_extra:
             continue
@@ -114,8 +115,26 @@ def _data(name: str) -> dict:
     return tomllib.loads(files("resume_xray.data").joinpath(name).read_text(encoding="utf-8"))
 
 
+CASE_MARK = "="
+
+
+@cache
+def _skills() -> tuple[dict[str, list[str]], frozenset[str]]:
+    """Wordings without their case mark, and the wordings that must match their capitals."""
+    entries, exact = {}, set()
+    for key, wordings in _data("skills.toml").items():
+        entries[key] = [w.removeprefix(CASE_MARK) for w in wordings]
+        exact |= {w.removeprefix(CASE_MARK) for w in wordings if w.startswith(CASE_MARK)}
+    return entries, frozenset(exact)
+
+
 def skills() -> dict[str, list[str]]:
-    return _data("skills.toml")
+    return _skills()[0]
+
+
+def case_sensitive(wording: str) -> bool:
+    """A dictionary wording marked with "=" ("=GEO") matches only with the same capitals."""
+    return wording in _skills()[1]
 
 
 # Terms of the job description (§3.2, §3.3) -------------------------------------------------------

@@ -184,7 +184,7 @@ def test_skill_dictionary_has_no_wording_in_two_entries():
     for key, wordings in skills().items():
         for wording in wordings:
             # The same keys matching uses: C++, C# and C stay apart.
-            k = " ".join(t.surface for t in analyze(wording, "en"))
+            k = " ".join(t.surface for t in analyze(wording.removeprefix("="), "en"))
             assert k not in seen, f"{wording!r} is in {seen.get(k)} and {key}"
             seen[k] = key
 
@@ -198,6 +198,12 @@ def test_skill_dictionary_has_no_stem_collisions():
         seen = {}
         for key, wordings in skills().items():
             for wording in wordings:
-                k = " ".join(t.stem for t in analyze(wording, language))
+                k = " ".join(t.stem for t in analyze(wording.removeprefix("="), language))
                 assert seen.get(k, key) == key, f"{wording!r} ({key}) stems like an entry of {seen[k]}"
                 seen[k] = key
+
+
+def test_case_marked_wordings_need_capitals():
+    terms = {t.name: t.wordings for t in parse_job("Requirements\nGEO and AIO for AI search; geo-targeted campaigns\n").terms}
+    assert terms.get("GEO") == ["GEO"] and terms.get("AIO") == ["AIO"]
+    assert "GEO" not in {t.name for t in parse_job("Requirements\nRun geo targeted campaigns\n").terms}
