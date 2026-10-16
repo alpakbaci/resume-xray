@@ -187,3 +187,17 @@ def test_skill_dictionary_has_no_wording_in_two_entries():
             k = " ".join(t.surface for t in analyze(wording, "en"))
             assert k not in seen, f"{wording!r} is in {seen.get(k)} and {key}"
             seen[k] = key
+
+
+def test_skill_dictionary_has_no_stem_collisions():
+    # Jobs are searched by stem, so two entries must not share a stemmed wording:
+    # "Project Manager" and "Project Management" both stem to "project manag".
+    from resume_xray.match import skills
+
+    for language in ("en", "tr"):
+        seen = {}
+        for key, wordings in skills().items():
+            for wording in wordings:
+                k = " ".join(t.stem for t in analyze(wording, language))
+                assert seen.get(k, key) == key, f"{wording!r} ({key}) stems like an entry of {seen[k]}"
+                seen[k] = key
