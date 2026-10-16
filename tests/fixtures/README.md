@@ -72,3 +72,15 @@ python tools/calibrate.py ~/resume-xray-private   # plus private resumes
 prints, for every resume, the findings and the measurements behind the thresholds (order
 similarity of each reading, gutter width, bullet size ratio) and where a report disagrees with its
 label. Results go into the calibration table of `ALGORITHM.md`.
+
+## Growing the skill dictionary
+
+```bash
+python tools/merge_skills.py new_skills.toml "Section title"           # report
+python tools/merge_skills.py new_skills.toml "Section title" --write   # apply
+```
+
+merges a list in the dictionary's own format into `resume_xray/data/skills.toml`: wordings already
+known extend their existing skill, entries that would merge two skills or stem like another skill
+are reported and left out, the rest become a new section. The dictionary tests then check that no
+wording is in two entries and that no two entries stem alike.
