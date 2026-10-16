@@ -3,7 +3,7 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
-const state = { file: null, add: [], remove: [], titleTouched: false, data: null, seq: 0, lang: "en" };
+const state = { file: null, add: [], remove: [], titleTouched: false, data: null, seq: 0, lang: "en", view: null };
 
 function el(tag, cls, text) {
   const node = document.createElement(tag);
@@ -46,21 +46,43 @@ function applyLanguage() {
   });
   document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === state.lang)));
   renderMine();
+  renderGo();
   if (state.data) render(state.data);
 }
 
 // Input ------------------------------------------------------------------------------------------
 
+// Choosing a file only selects it; the Analyze button starts the reading. Once results are on the
+// page, keyword and job edits update them right away.
 function setFile(file) {
   if (!file) return;
   state.file = file;  // keywords stay: the same search can be tried on another resume
-  analyze();
+  state.data = null;
+  state.view = null;
+  state.seq++;
+  $("results").hidden = true;
+  showError("");
+  renderGo();
+}
+
+function renderGo() {
+  const s = t();
+  $("analyze").disabled = !state.file;
+  $("analyze-hint").textContent = state.file ? s.analyze_ready : s.analyze_hint;
+  if (state.file && !state.data) {
+    $("drop-title").textContent = state.file.name;
+    $("drop-sub").textContent = s.file_ready;
+  }
 }
 
 let timer = null;
 function analyzeSoon() {
   clearTimeout(timer);
-  timer = setTimeout(analyze, 650);
+  if (state.data) timer = setTimeout(analyze, 650);
+}
+
+function refresh() {
+  if (state.data) analyze();
 }
 
 function showError(message) {
@@ -120,6 +142,8 @@ function render(data) {
   $("drop-sub").textContent = data.kind === "pdf" ? s.file_sub_pdf(data.pages) : s.file_sub_docx;
 
   const problems = data.findings.filter((f) => f.severity !== "info");
+  $("fix-count").textContent = String(problems.length);
+  $("fix-count").hidden = !problems.length;
   const verdict = s.verdict[data.verdict];
   const [readTitle, readText] = typeof verdict === "function" ? verdict(problems.length) : verdict;
   $("sum-read").textContent = readTitle;
@@ -127,6 +151,7 @@ function render(data) {
 
   renderFindings(data);
   renderKeywords(data.job_match);
+  renderSeen(data);
   renderTechnical(data);
 }
 
@@ -142,7 +167,7 @@ function renderFindings(data) {
   for (const finding of shown) {
     const [title, text] = phrase(finding);
     const fix = finding.severity !== "info";
-    const item = el("li");
+    const item = el("li", fix ? "fix" : "tip");
     item.append(el("span", "lab " + (fix ? "fix" : "tip"), fix ? t().fix : t().tip));
     const body = el("span", "", title);
     body.append(el("span", "sub", text));
@@ -251,7 +276,7 @@ function removeTerm(term) {
   }
   state.remove.push(term.job_wording);
   renderMine();
-  analyze();
+  refresh();
 }
 
 // The user's own keywords, listed under their input so they can be typed before a resume is chosen.
@@ -266,7 +291,7 @@ function renderMine() {
     button.addEventListener("click", () => {
       state.add = state.add.filter((w) => w !== word);
       renderMine();
-      analyze();
+      refresh();
     });
     box.append(button);
   }
@@ -281,7 +306,7 @@ function addWords(text) {
     known.add(key);
   }
   renderMine();
-  analyze();
+  refresh();
 }
 
 function renderTechnical(data) {
@@ -295,14 +320,45 @@ function renderTechnical(data) {
     if (finding.examples && finding.examples.length) li.append(el("div", "meta", `${s.examples}: ${finding.examples.join(", ")}`));
     list.append(li);
   }
-  const readings = $("readings");
-  readings.replaceChildren();
-  for (const [strategy, text] of Object.entries(data.readings)) {
-    const details = el("details");
-    details.append(el("summary", "", s.reading_titles[strategy]));
-    details.append(el("pre", "", text === null ? s.reader_failed_text : text || s.no_text));
-    readings.append(details);
+}
+
+// The text each reader gets, one tab per reader. A reader that some problem affects is marked.
+function renderSeen(data) {
+  const s = t();
+  const strategies = Object.keys(data.readings);
+  const broken = new Set(data.findings.filter((f) => f.severity !== "info").flatMap((f) => f.strategies || []));
+  // Open on a reading that has a problem, so the user sees what goes wrong first.
+  if (!strategies.includes(state.view)) state.view = strategies.find((x) => broken.has(x)) || strategies[strategies.length - 1];
+  const tabs = $("seen-tabs");
+  tabs.replaceChildren();
+  for (const strategy of strategies) {
+    const name = s.readers[strategy];
+    const tab = el("button", "tab" + (broken.has(strategy) ? " warn" : ""), name[0].toLocaleUpperCase(state.lang) + name.slice(1));
+    tab.type = "button";
+    tab.id = "tab-" + strategy;
+    tab.setAttribute("role", "tab");
+    tab.setAttribute("aria-selected", String(strategy === state.view));
+    tab.tabIndex = strategy === state.view ? 0 : -1;
+    if (broken.has(strategy)) tab.setAttribute("aria-description", s.seen_warn);
+    tab.addEventListener("click", () => {
+      state.view = strategy;
+      renderSeen(data);
+      $("tab-" + strategy).focus();
+    });
+    tab.addEventListener("keydown", (e) => {
+      const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+      if (!step) return;
+      e.preventDefault();
+      state.view = strategies[(strategies.indexOf(strategy) + step + strategies.length) % strategies.length];
+      renderSeen(data);
+      $("tab-" + state.view).focus();
+    });
+    tabs.append(tab);
   }
+  const text = data.readings[state.view];
+  $("seen-caption").textContent = s.reading_titles[state.view] + (broken.has(state.view) ? ". " + s.seen_warn[0].toUpperCase() + s.seen_warn.slice(1) + "." : "");
+  $("seen-text").setAttribute("aria-labelledby", "tab-" + state.view);
+  $("seen-text").textContent = text === null ? s.reader_failed_text : text || s.no_text;
 }
 
 // Wiring -----------------------------------------------------------------------------------------
@@ -311,6 +367,10 @@ function wire() {
   const input = $("file");
   input.addEventListener("change", () => setFile(input.files[0]));
   $("hero-choose").addEventListener("click", () => input.click());
+  $("analyze").addEventListener("click", () => {
+    analyze();
+    $("results").scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  });
 
   const drop = $("drop");
   ["dragenter", "dragover"].forEach((type) => drop.addEventListener(type, () => drop.classList.add("over")));

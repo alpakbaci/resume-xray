@@ -108,18 +108,23 @@
 
     <p class="step"><span class="n">2</span><span data-i18n="step_job">Keywords to search for</span> <span class="opt" data-i18n="step_job_opt">optional</span></p>
     <p class="hint step-hint" data-i18n="step_job_hint">Paste a job ad and the keywords are picked out for you, or type your own. Add any keyword that is missing.</p>
-    <label class="field-label" for="job" data-i18n="job_label">Job ad</label>
-    <textarea id="job" rows="5" data-i18n-placeholder="job_placeholder" placeholder="Paste the job ad here"></textarea>
     <div class="title-row">
       <label for="title" data-i18n="title_label">Job title</label>
       <input id="title" type="text" autocomplete="off" data-i18n-placeholder="title_placeholder" placeholder="Taken from the job ad when it starts with one">
     </div>
+    <label class="field-label" for="job" data-i18n="job_label">Job ad</label>
+    <textarea id="job" rows="5" data-i18n-placeholder="job_placeholder" placeholder="Paste the job ad here"></textarea>
     <label class="field-label" for="add-input" data-i18n="add_label">Your own keywords</label>
     <form class="add" id="add-form">
       <input id="add-input" type="text" autocomplete="off" data-i18n-placeholder="add_placeholder" placeholder="e.g. Scrum Master, SQL, Figma">
       <button type="submit" class="btn ghost" data-i18n="add">Add</button>
     </form>
     <div class="mine" id="mine"></div>
+
+    <div class="go">
+      <button type="button" class="btn primary" id="analyze" disabled data-i18n="analyze">Analyze</button>
+      <span class="hint" id="analyze-hint">Choose a resume first.</span>
+    </div>
   </section>
 
   <section class="results" id="results" aria-live="polite" hidden>
@@ -131,9 +136,17 @@
       <div><strong id="sum-match"></strong><p id="sum-match-text"></p></div>
     </div>
 
-    <h3 data-i18n="fix_title">What to fix</h3>
+    <h3 class="fix-title"><span data-i18n="fix_title">What to fix</span> <span class="count" id="fix-count" hidden></span></h3>
     <ul class="findings" id="findings"></ul>
     <p class="all-good" id="all-good" hidden data-i18n="all_good">Nothing to fix. Every reading method we tried reads your resume correctly.</p>
+
+    <section class="seen" aria-labelledby="seen-title">
+      <h3 id="seen-title" data-i18n="seen_title">How an ATS sees your resume</h3>
+      <p class="hint" data-i18n="seen_text">This is the plain text each kind of ATS reader gets from your file. If something looks wrong here, it looks wrong to the ATS.</p>
+      <div class="tabs" id="seen-tabs" role="tablist"></div>
+      <p class="hint" id="seen-caption"></p>
+      <pre class="seen-text" id="seen-text" role="tabpanel" tabindex="0"></pre>
+    </section>
 
     <div id="keywords" hidden>
       <h3 data-i18n="kw_title">Keywords</h3>
@@ -147,7 +160,6 @@
       <summary data-i18n="tech_title">Show technical details</summary>
       <p class="hint" data-i18n="tech_text">resume-xray reads your file three ways, like the text extractors ATSs use. A problem that breaks one of them affects some ATSs.</p>
       <ul class="tech-findings" id="tech-findings"></ul>
-      <div class="readings" id="readings"></div>
     </details>
   </section>
 
