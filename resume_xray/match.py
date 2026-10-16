@@ -421,6 +421,7 @@ MONTHS = {
 PRESENT = r"present|current|now|today|ongoing|gunumuz|halen|hala|devam ediyor|su an"
 DATE_ITEM = re.compile(rf"(?:(\d{{1,2}})[/.](\d{{4}})|([a-z]{{3,9}})\.?\s+(\d{{4}})|\b(\d{{4}})\b|\b({PRESENT})\b)")
 RANGE_JOINER = re.compile(r"^\s*(?:[-–—]|to|until|\s)\s*$")
+DANGLING_JOINER = re.compile(r"\s*(?:[-–—]|to|until)\s*")
 
 
 def _date_items(text: str) -> list[tuple[int, int, tuple[int, int] | None]]:
@@ -444,17 +445,23 @@ def _years_in_resume(line_sections: list[tuple[Line, str | None]]) -> float | No
     """Total time covered by the date ranges in the experience section, overlaps counted once.
     A year without a month starts in January and ends in December."""
     intervals = []
-    for line, section in line_sections:
-        if section != "experience":
-            continue
-        text = ascii_key(lower(line.text, "tr"))
+    lines = [ascii_key(lower(line.text, "tr")) for line, section in line_sections if section == "experience"]
+    for i, text in enumerate(lines):
         items = _date_items(text)
-        for (_, end_a, a), (start_b, _, b) in zip(items, items[1:]):
-            if RANGE_JOINER.match(text[end_a:start_b]):
-                start = a[0] * 12 + max(a[1], 1) - 1
-                stop = b[0] * 12 + (b[1] or 12) - 1
-                if start <= stop:
-                    intervals.append((start, stop))
+        pairs = [(a, b) for (_, end_a, a), (start_b, _, b) in zip(items, items[1:]) if RANGE_JOINER.match(text[end_a:start_b])]
+        # In a narrow column a range can wrap, with the employer in between:
+        # "Jan 2021 –" / "Northwind Apps" / "Present". The end is the next line that starts with a date.
+        if items and DANGLING_JOINER.fullmatch(text[items[-1][1]:]):
+            for following in lines[i + 1 : i + 3]:
+                nxt = _date_items(following)
+                if nxt and nxt[0][0] == 0:
+                    pairs.append((items[-1][2], nxt[0][2]))
+                    break
+        for a, b in pairs:
+            start = a[0] * 12 + max(a[1], 1) - 1
+            stop = b[0] * 12 + (b[1] or 12) - 1
+            if start <= stop:
+                intervals.append((start, stop))
     if not intervals:
         return None
     total, current = 0, None

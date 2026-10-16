@@ -221,3 +221,10 @@ def test_general_skills_are_shown_but_not_counted(tmp_path):
     assert terms["Product Owner"].job_wording == "Product Ownership"
     # Only Jira and Product Owner count: one of two found.
     assert match.required_coverage == 0.5
+
+
+def test_date_range_wrapped_in_a_narrow_column(tmp_path):
+    # Two-column resumes wrap "Jan 2021 – Present" around the employer's name.
+    document, report = resume(tmp_path, "EXPERIENCE", "Senior Product Manager,", "Jan 2021 –", "Northwind Apps", "Present", "Analyst 2016", "2018 – 2019")
+    match = match_job(document, "Requirements\n3+ years with Jira\n", report.section_lines)
+    assert match.years_in_resume >= 5.5  # Jan 2021 to today, plus 2018-2019; "Analyst 2016" is no open range

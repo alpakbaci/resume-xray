@@ -462,7 +462,7 @@ For every term found, the report also shows:
 | Check | Method | Why separate |
 |---|---|---|
 | Job title | Found when one resume line contains the title as an exact phrase (same keys as exact terms), like a quoted phrase search [11]. *Found while testing:* a fuzzy comparison took "Project Manager" for "Product Manager" (87% similar); a recruiter's search would not | The field recruiters search most |
-| Years of experience | The largest "N+ years" / "N yıl" in the counted lines of the job. In the resume, date ranges in the experience section (`MM/YYYY`, `Jan 2021`, `Oca 2021`, `2021`, "Present" / "Günümüz" = today) are merged so that overlapping periods count once. A year without a month starts in January and ends in December | A knockout criterion, must not be mixed with coverage |
+| Years of experience | The largest "N+ years" / "N yıl" in the counted lines of the job. In the resume, date ranges in the experience section (`MM/YYYY`, `Jan 2021`, `Oca 2021`, `2021`, "Present" / "Günümüz" = today) are merged so that overlapping periods count once. A year without a month starts in January and ends in December. A range that wraps in a narrow column ("Jan 2021 –" / employer / "Present") ends at the first of the next two lines that starts with a date (found on our two-column fixture) | A knockout criterion, must not be mixed with coverage |
 | Degree | Levels Bachelor < Master < PhD, recognized in English and Turkish ("lisans", "yüksek lisans", "doktora", "BSc", "MSc"). The job's requirement is the **lowest** level it mentions ("Bachelor's or Master's" → Bachelor); the resume's is the **highest** level in its education section | A knockout criterion |
 
 ---

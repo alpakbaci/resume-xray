@@ -464,7 +464,7 @@ Bulunan her terim için rapor ayrıca şunları gösterir:
 | Kontrol | Yöntem | Neden ayrı |
 |---|---|---|
 | Pozisyon adı | Bir CV satırı pozisyon adını birebir ifade olarak içeriyorsa bulunmuş sayılır (tam terimlerle aynı anahtarlar), tırnaklı bir ifade araması gibi [11]. *Test sırasında bulundu:* bulanık karşılaştırma "Project Manager"ı "Product Manager" sanmıştı (%87 benzer); işe alımcının araması bulmazdı | İşe alımcıların en çok aradığı alan |
-| Deneyim yılı | İlanın sayılan satırlarındaki en büyük "N+ years" / "N yıl". CV'de deneyim bölümündeki tarih aralıkları (`MM/YYYY`, `Jan 2021`, `Oca 2021`, `2021`, "Present" / "Günümüz" = bugün), çakışan dönemler bir kez sayılacak şekilde birleştirilir. Ayı olmayan bir yıl ocakta başlar, aralıkta biter | Eleme kriteridir, kapsamayla karıştırılmamalı |
+| Deneyim yılı | İlanın sayılan satırlarındaki en büyük "N+ years" / "N yıl". CV'de deneyim bölümündeki tarih aralıkları (`MM/YYYY`, `Jan 2021`, `Oca 2021`, `2021`, "Present" / "Günümüz" = bugün), çakışan dönemler bir kez sayılacak şekilde birleştirilir. Ayı olmayan bir yıl ocakta başlar, aralıkta biter. Dar bir sütunda satıra bölünen aralık ("Jan 2021 –" / işveren / "Present"), sonraki iki satırdan tarihle başlayan ilkinde biter (iki sütunlu test CV'mizde bulundu) | Eleme kriteridir, kapsamayla karıştırılmamalı |
 | Diploma | Lisans < Yüksek lisans < Doktora seviyeleri İngilizce ve Türkçe tanınır ("lisans", "yüksek lisans", "doktora", "BSc", "MSc"). İlanın şartı andığı **en düşük** seviyedir ("Bachelor's or Master's" → Lisans); CV'ninki eğitim bölümündeki **en yüksek** seviyedir | Eleme kriteridir |
 
 ---
