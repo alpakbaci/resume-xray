@@ -47,7 +47,23 @@ function applyLanguage() {
   document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === state.lang)));
   renderMine();
   renderGo();
+  renderFaq();
   if (state.data) render(state.data);
+}
+
+// Questions are native <details>, so they open with the keyboard and work without this script's
+// state; open ones stay open when the language changes.
+function renderFaq() {
+  const list = $("faq-list");
+  const open = new Set([...list.querySelectorAll("details[open]")].map((d) => d.dataset.i));
+  list.replaceChildren();
+  t().faq.forEach(([question, answer], i) => {
+    const item = el("details");
+    item.dataset.i = String(i);
+    item.open = open.has(String(i));
+    item.append(el("summary", "", question), el("p", "", answer));
+    list.append(item);
+  });
 }
 
 // Input ------------------------------------------------------------------------------------------
