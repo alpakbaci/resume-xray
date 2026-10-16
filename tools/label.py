@@ -41,7 +41,7 @@ SOURCES = ["Canva", "Word", "Google Docs", "LinkedIn", "Job site (Kariyer.net, I
            "Other web builder", "Scanned / photo", "Unknown"]
 
 QUESTIONS = [
-    ("selectable", "Open the file in Preview or Acrobat (not on this page, where pages are pictures): can you select and copy the text? (Dosyayı Önizleme'de açın; bu sayfada değil, burada sayfalar resim. Metni seçip kopyalayabiliyor musunuz?)",
+    ("selectable", "Open the file in Preview or Acrobat (not on this page, where pages are pictures): can you select and copy the text? Preview's Live Text also selects text in pictures: if the selection appears only after a moment, or the file is one big image, answer no. (Dosyayı Önizleme'de açın; bu sayfada değil, burada sayfalar resim. Metni seçip kopyalayabiliyor musunuz? Önizleme'nin Canlı Metin özelliği resimdeki yazıyı da seçtirir: seçim bir an gecikerek geliyorsa ya da dosya tek bir büyük resimse hayır deyin.)",
      [("yes", "Yes"), ("no", "No, it is an image")], "pdf"),
     ("layout", "How is the main content laid out? (Ana içerik nasıl yerleşmiş?)",
      [("single", "One column"), ("columns", "Two columns or a sidebar"), ("grid", "Boxes / table-like grid")], "pdf"),

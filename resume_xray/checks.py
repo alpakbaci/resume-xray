@@ -25,6 +25,8 @@ PRIVATE_USE = re.compile("[-�]")
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 PHONE = re.compile(r"\+?\d[\d\s().-]{8,}\d")
 LINKEDIN = re.compile(r"linkedin\.com/in/[\w%-]+", re.IGNORECASE)
+# LinkedIn's own PDF export breaks the line right after "linkedin.com/in/" (blind hold-out 2).
+LINKEDIN_SPLIT = re.compile(r"linkedin\.com/in/[ \t]*\n[ \t]*[\w%-]+", re.IGNORECASE)
 YEAR = r"(?:19|20)\d{2}"
 VAGUE_DATE = re.compile(
     rf"\b(?:summer|winter|spring|fall|autumn|yaz|kış|kis|bahar|ilkbahar|sonbahar|güz|guz|q[1-4])\s+{YEAR}\b",
@@ -480,17 +482,20 @@ def check_fields(document: Document, weights: dict) -> tuple[dict[str, str], lis
             )
         )
     hidden = [link for link in _links(document) if LINKEDIN.search(link)]
+    split = LINKEDIN_SPLIT.search(structured)
     if hidden and not linkedin:
         findings.append(
             Finding(
                 check="2.7",
                 severity="info",
-                title="LinkedIn address is only a hidden link",
+                title="LinkedIn address is split over two lines" if split else "LinkedIn address is only a hidden link",
                 code="linkedin_hidden",
-                detail="Your LinkedIn URL is attached to other text as a link. Text extraction reads "
+                detail="The address breaks after linkedin.com/in/, so the extracted text has no complete URL."
+                if split else "Your LinkedIn URL is attached to other text as a link. Text extraction reads "
                 "the visible text, not the link target, so the URL itself is not in the parsed resume.",
                 fix="Write the address as text, e.g. linkedin.com/in/your-name.",
                 examples=(hidden[0],),
+                params={"split": bool(split)},
             )
         )
 
