@@ -67,8 +67,7 @@ function setFile(file) {
 
 function renderGo() {
   const s = t();
-  $("analyze").disabled = !state.file;
-  $("analyze-hint").textContent = state.file ? s.analyze_ready : s.analyze_hint;
+  $("go").hidden = !state.file;
   if (state.file && !state.data) {
     $("drop-title").textContent = state.file.name;
     $("drop-sub").textContent = s.file_ready;
@@ -160,21 +159,29 @@ function phrase(finding) {
   return make ? make(finding.params || {}, finding, state.lang) : [finding.title, finding.detail];
 }
 
+// Fixes and tips are two numbered lists; the number sits in a circle in the list's status color.
 function renderFindings(data) {
-  const list = $("findings");
-  list.replaceChildren();
   const shown = data.findings.filter((f) => f.code !== "columns_ok");
-  for (const finding of shown) {
+  const fixes = shown.filter((f) => f.severity !== "info");
+  const tips = shown.filter((f) => f.severity === "info");
+  fill($("findings"), fixes, t().fix);
+  fill($("tips"), tips, t().tip);
+  $("tips-title").hidden = !tips.length;
+  $("all-good").hidden = fixes.length > 0;
+}
+
+function fill(list, findings, label) {
+  list.replaceChildren();
+  findings.forEach((finding, i) => {
     const [title, text] = phrase(finding);
-    const fix = finding.severity !== "info";
-    const item = el("li", fix ? "fix" : "tip");
-    item.append(el("span", "lab " + (fix ? "fix" : "tip"), fix ? t().fix : t().tip));
-    const body = el("span", "", title);
-    body.append(el("span", "sub", text));
-    item.append(body);
+    const item = el("li");
+    const n = el("span", "n", String(i + 1));
+    n.setAttribute("aria-hidden", "true");
+    const body = el("span", "body");
+    body.append(el("span", "visually-hidden", `${label} ${i + 1}: `), el("strong", "", title), el("span", "sub", text));
+    item.append(n, body);
     list.append(item);
-  }
-  $("all-good").hidden = shown.length > 0;
+  });
 }
 
 function status(term) {

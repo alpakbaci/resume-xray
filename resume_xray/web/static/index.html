@@ -105,6 +105,10 @@
       <span class="btn ghost" aria-hidden="true" data-i18n="browse">Browse</span>
     </label>
     <p class="error" id="file-error" role="alert" hidden></p>
+    <div class="go" id="go" hidden>
+      <button type="button" class="btn primary" id="analyze" data-i18n="analyze">Analyze</button>
+      <span class="hint" id="analyze-hint" data-i18n="analyze_ready">Keywords below are optional.</span>
+    </div>
 
     <p class="step"><span class="n">2</span><span data-i18n="step_job">Keywords to search for</span> <span class="opt" data-i18n="step_job_opt">optional</span></p>
     <p class="hint step-hint" data-i18n="step_job_hint">Paste a job ad and the keywords are picked out for you, or type your own. Add any keyword that is missing.</p>
@@ -120,11 +124,6 @@
       <button type="submit" class="btn ghost" data-i18n="add">Add</button>
     </form>
     <div class="mine" id="mine"></div>
-
-    <div class="go">
-      <button type="button" class="btn primary" id="analyze" disabled data-i18n="analyze">Analyze</button>
-      <span class="hint" id="analyze-hint">Choose a resume first.</span>
-    </div>
   </section>
 
   <section class="results" id="results" aria-live="polite" hidden>
@@ -137,8 +136,10 @@
     </div>
 
     <h3 class="fix-title"><span data-i18n="fix_title">What to fix</span> <span class="count" id="fix-count" hidden></span></h3>
-    <ul class="findings" id="findings"></ul>
+    <ol class="findings fixes" id="findings"></ol>
     <p class="all-good" id="all-good" hidden data-i18n="all_good">Nothing to fix. Every reading method we tried reads your resume correctly.</p>
+    <h4 class="tips-title" id="tips-title" hidden data-i18n="tips_title">Tips</h4>
+    <ol class="findings tips" id="tips"></ol>
 
     <section class="seen" aria-labelledby="seen-title">
       <h3 id="seen-title" data-i18n="seen_title">How an ATS sees your resume</h3>
