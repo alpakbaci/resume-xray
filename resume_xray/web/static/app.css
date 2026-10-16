@@ -161,6 +161,8 @@ textarea:focus, input[type="text"]:focus { border-color: var(--cream); }
 .chip.part { background: var(--cream); color: var(--deep); }
 .chip.no { background: rgba(215, 47, 47, .26); border-color: var(--red); color: #FFE2E2; }
 .chip.user { border-style: dotted; border-width: 1.5px; }
+.chip.gen { background: transparent; border-color: var(--line); color: var(--muted); }
+.group.general { margin-top: 18px; }
 .chip.part.user { border-color: var(--deep); }
 .add { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 .add input { flex: 1; min-width: 200px; height: 38px; padding: 0 12px; }

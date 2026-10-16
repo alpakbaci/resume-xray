@@ -34,6 +34,8 @@ def main(args: list[str]) -> int:
     source, section, write = Path(args[0]), args[1], "--write" in args
     new = tomllib.loads(source.read_text(encoding="utf-8"))
     current = tomllib.loads(DICTIONARY.read_text(encoding="utf-8"))
+    # Soft skills live in their own file but share the matching keys, so they count as existing.
+    current |= tomllib.loads(DICTIONARY.with_name("soft_skills.toml").read_text(encoding="utf-8"))
     by_surface = {keys(w)[0]: k for k, ws in current.items() for w in ws}
     by_stem = {keys(w)[1]: k for k, ws in current.items() for w in ws}
 

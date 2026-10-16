@@ -378,6 +378,13 @@ uzun bir ilk satır başlık değil cümledir.
   veya iki karakterli yazımlar (`R`, `C`, `Go`, `UI`) büyük/küçük harf olarak da eşleşmelidir;
   sözlükte başına `=` konmuş daha uzun yazımlar da öyle: bunlar aynı zamanda sıradan bir kelime olan
   kısaltmalar içindir (`=GEO`, "GEO" ile eşleşir, "geo-targeting" ile eşleşmez).
+- **Genel beceriler ve soft skill'ler** (`resume_xray/data/soft_skills.toml`): iletişim, liderlik,
+  proaktiflik gibi beceriler aynı şekilde bulunur, ama "Genel beceriler" olarak ayrı gösterilir ve
+  kapsamaya **sayılmaz**. İlanlar bunları sık yazar, işe alımcılar nadiren arar; sayıldıklarında
+  gerçek bir ilanın "eksik" listesinin çoğunu bunlar oluşturuyordu (kendi gözlemimiz, Product Owner
+  ilanı, 2026-10-16). Kullanıcının eklediği kelime her zaman sayılır. Kökü, başka anlamdaki sıradan
+  bir ilan kelimesiyle aynı olan sözlük yazımı çıkarılır: "Dependability", "dependencies" ile
+  eşleşiyordu.
 - **Sözlükte olmayan teknik görünümlü kelimeler:** harfle birlikte rakam, `+` veya `#` içeren,
   CamelCase yazılan (`PostgreSQL`, `ISO27001`, `iOS`) ya da en az iki büyük harften oluşan
   kısaltmalar (`ARPU`, `LTV`, `AI`).

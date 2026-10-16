@@ -86,10 +86,11 @@ paragraphs only. When the readers disagree, you are told which kind of ATS is af
 The result is **Readable**, **Readable, with risks** or **Hard to read**. The worst problem
 decides, so one serious problem is never averaged away.
 
-**Keywords.** From a job ad, resume-xray takes the skills it knows (438 skills in 761 wordings,
-English and Turkish, for software, data, AI, product, project, marketing and general work),
+**Keywords.** From a job ad, resume-xray takes the skills it knows (450 skills in 792 wordings,
+English and Turkish, for software, data, AI, product, project, finance and marketing),
 plus words that look technical such as `C++` or `ALLCAPS` names. Requirements count fully,
-nice-to-haves less. The exact word counts fully; other word forms and synonyms count half,
+nice-to-haves less. General skills such as communication are shown but not counted, because
+recruiters rarely search for them. The exact word counts fully; other word forms and synonyms count half,
 because a plain search would miss them. You can add or remove keywords yourself, or skip the job
 ad entirely.
 

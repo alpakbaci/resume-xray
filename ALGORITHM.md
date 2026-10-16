@@ -377,6 +377,12 @@ longer first line is a sentence, not a title.
   kept. Wordings of one or two characters (`R`, `C`, `Go`, `UI`) must also match capitals, and so
   must longer wordings marked with a leading `=` in the dictionary, for acronyms that are also
   ordinary words (`=GEO` matches "GEO" but not "geo-targeting").
+- **General and soft skills** (`resume_xray/data/soft_skills.toml`): communication, leadership,
+  proactiveness and the like are found the same way but shown apart as "General skills" and
+  **not counted** in coverage. Job ads list them often, recruiters rarely search for them, and
+  counting them made most of a real ad's "missing" list (our observation, Product Owner ad,
+  2026-10-16). A keyword the user adds is always counted. A dictionary wording whose stem is shared
+  by an ordinary job word with another meaning is removed: "Dependability" matched "dependencies".
 - **Technical-looking words** not in the dictionary: words with a letter and a digit, `+` or `#`,
   CamelCase (`PostgreSQL`, `ISO27001`, `iOS`), or acronyms of two or more capital letters
   (`ARPU`, `LTV`, `AI`).

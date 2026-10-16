@@ -90,6 +90,7 @@ window.I18N = {
     fix: "Fix",
     tip: "Tip",
     groups: {
+      general: ["General skills", "shown for completeness, not counted: recruiters rarely search for them"],
       no: ["Missing", "add them if they are true for you"],
       part: ["Partly found", "a plain search may miss them; add the job's exact word"],
       ok: ["Found", "a search finds these"],
@@ -224,6 +225,7 @@ window.I18N = {
     fix: "Düzelt",
     tip: "İpucu",
     groups: {
+      general: ["Genel beceriler", "bilgi için gösterilir, sayılmaz: işe alımcılar bunları nadiren arar"],
       no: ["Eksik", "sizin için doğruysa ekleyin"],
       part: ["Kısmen bulundu", "düz bir arama bunları kaçırabilir; ilandaki kelimenin aynısını ekleyin"],
       ok: ["Bulundu", "arama bunları bulur"],

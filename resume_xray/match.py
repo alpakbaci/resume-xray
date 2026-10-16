@@ -119,17 +119,26 @@ CASE_MARK = "="
 
 
 @cache
-def _skills() -> tuple[dict[str, list[str]], frozenset[str]]:
-    """Wordings without their case mark, and the wordings that must match their capitals."""
-    entries, exact = {}, set()
-    for key, wordings in _data("skills.toml").items():
-        entries[key] = [w.removeprefix(CASE_MARK) for w in wordings]
-        exact |= {w.removeprefix(CASE_MARK) for w in wordings if w.startswith(CASE_MARK)}
-    return entries, frozenset(exact)
+def _skills() -> tuple[dict[str, list[str]], frozenset[str], frozenset[str]]:
+    """Wordings without their case mark, the wordings that must match their capitals, and the keys
+    of general and soft skills (soft_skills.toml), which are shown but not counted."""
+    entries, exact, general = {}, set(), set()
+    for name in ("skills.toml", "soft_skills.toml"):
+        for key, wordings in _data(name).items():
+            entries[key] = [w.removeprefix(CASE_MARK) for w in wordings]
+            exact |= {w.removeprefix(CASE_MARK) for w in wordings if w.startswith(CASE_MARK)}
+            if name == "soft_skills.toml":
+                general.add(key)
+    return entries, frozenset(exact), frozenset(general)
 
 
 def skills() -> dict[str, list[str]]:
     return _skills()[0]
+
+
+def is_general(key: str) -> bool:
+    """A general or soft skill (communication, proactiveness): shown, not counted (§3.2)."""
+    return key in _skills()[2]
 
 
 def case_sensitive(wording: str) -> bool:
@@ -272,6 +281,8 @@ class TermResult:
     # Reading strategies in which the term is not found although it is in the resume.
     lost_in: tuple[str, ...] = ()
     source: Literal["job", "user"] = "job"
+    # A general or soft skill taken from the job ad: shown, not counted in the coverage.
+    general: bool = False
 
 
 @dataclass
@@ -315,6 +326,7 @@ def match_job(
             level=level,
             job_wording=term.wordings[0],
             source=term.source,
+            general=term.source == "job" and is_general(term.key),
         )
         if found:
             result.resume_wording = span_text(reference, found)
@@ -331,8 +343,8 @@ def match_job(
     levels = {"exact": 1.0, "word_form": mw["word_form_match"], "synonym": mw["synonym_match"], "missing": 0.0}
     report = MatchReport(
         job_title=job.title,
-        required_coverage=_coverage([r for r in results if r.kind == "required"], levels),
-        preferred_coverage=_coverage([r for r in results if r.kind == "preferred"], levels),
+        required_coverage=_coverage([r for r in results if r.kind == "required" and not r.general], levels),
+        preferred_coverage=_coverage([r for r in results if r.kind == "preferred" and not r.general], levels),
         terms=sorted(results, key=lambda r: (r.kind != "required", -r.weight, r.name.lower())),
     )
     report.title_match = _title_match(job.title, document, language)

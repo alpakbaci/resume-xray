@@ -207,3 +207,17 @@ def test_case_marked_wordings_need_capitals():
     terms = {t.name: t.wordings for t in parse_job("Requirements\nGEO and AIO for AI search; geo-targeted campaigns\n").terms}
     assert terms.get("GEO") == ["GEO"] and terms.get("AIO") == ["AIO"]
     assert "GEO" not in {t.name for t in parse_job("Requirements\nRun geo targeted campaigns\n").terms}
+
+
+def test_general_skills_are_shown_but_not_counted(tmp_path):
+    # From a real Product Owner ad: "dependencies" once matched the soft skill "Dependability".
+    document, report = resume(tmp_path, "EXPERIENCE", "Owned the backlog in Jira", "SKILLS", "Jira")
+    job = "Requirements\nJira, strong communication and Product Ownership\nTrack technical dependencies\n"
+    match = match_job(document, job, report.section_lines)
+    terms = {t.name: t for t in match.terms}
+
+    assert "Dependability" not in terms
+    assert terms["Communication"].general and terms["Communication"].level == "missing"
+    assert terms["Product Owner"].job_wording == "Product Ownership"
+    # Only Jira and Product Owner count: one of two found.
+    assert match.required_coverage == 0.5

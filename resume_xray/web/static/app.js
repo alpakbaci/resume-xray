@@ -237,8 +237,9 @@ function renderKeywords(match) {
     return;
   }
   box.hidden = false;
-  const required = match.terms.filter((x) => x.kind === "required");
-  const basis = required.length ? required : match.terms;
+  const counted = match.terms.filter((x) => !x.general);
+  const required = counted.filter((x) => x.kind === "required");
+  const basis = required.length ? required : counted;
   const coverage = required.length ? match.required_coverage : match.preferred_coverage;
   if (!basis.length) {
     [$("sum-match").textContent, $("sum-match-text").textContent] = s.match_empty;
@@ -265,13 +266,27 @@ function renderKeywords(match) {
   const groups = $("groups");
   groups.replaceChildren();
   for (const st of order) {
-    const terms = match.terms.filter((x) => status(x) === st);
+    const terms = counted.filter((x) => status(x) === st);
     if (!terms.length) continue;
     const group = el("div", "group");
     const head = el("p", "", s.groups[st][0] + " ");
     head.append(el("span", "", "· " + s.groups[st][1]));
     group.append(head);
     for (const term of terms) group.append(chip(term, st));
+    groups.append(group);
+  }
+  // General and soft skills from the ad: listed for completeness, never counted (ALGORITHM.md §3.2).
+  const general = match.terms.filter((x) => x.general);
+  if (general.length) {
+    const group = el("div", "group general");
+    const head = el("p", "", s.groups.general[0] + " ");
+    head.append(el("span", "", "· " + s.groups.general[1]));
+    group.append(head);
+    for (const term of general) {
+      const button = chip(term, status(term));
+      button.classList.add("gen");
+      group.append(button);
+    }
     groups.append(group);
   }
 
