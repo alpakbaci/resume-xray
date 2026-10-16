@@ -142,6 +142,8 @@ textarea:focus, input[type="text"]:focus { border-color: var(--cream); }
 .tips li { background: rgba(252, 238, 167, .06); }
 .findings strong { display: block; font-size: 16px; font-weight: 500; }
 .findings .sub { display: block; font-size: 14px; color: var(--muted); margin-top: 4px; }
+.good { list-style: none; margin: 12px 0 0; padding: 0; }
+.good li { padding: 10px 16px; border-radius: 10px; margin-bottom: 6px; background: rgba(63, 158, 110, .16); color: #E2F5EA; font-size: 15px; }
 .tips-title { font-size: 15px; font-weight: 500; margin: 22px 0 0; color: var(--muted); }
 .all-good { color: var(--muted); }
 

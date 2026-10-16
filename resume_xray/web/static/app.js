@@ -184,6 +184,30 @@ function renderFindings(data) {
   fill($("tips"), tips, t().tip);
   $("tips-title").hidden = !tips.length;
   $("all-good").hidden = fixes.length > 0;
+  renderGood(data);
+}
+
+// What passed. An item is listed only when no finding touches it in any reader, so "good" is never
+// said about something that breaks in some ATSs.
+function renderGood(data) {
+  const s = t().good;
+  const codes = new Set(data.findings.map((f) => f.code));
+  const none = (...list) => list.every((c) => !codes.has(c));
+  const items = [];
+  if (none("no_text_layer", "reader_failed")) {
+    if (none("garbled", "words_broken")) items.push(s.text);
+    if (codes.has("columns_ok")) items.push(s.columns);
+    else if (none("columns_scramble", "order_differs")) items.push(s.order);
+    if (data.kind === "docx" && none("contact_in_header", "text_boxes")) items.push(s.parts);
+    const headings = Object.values(data.sections);
+    if (headings.length && none("section_missing", "heading_unknown", "heading_merged")) items.push(s.headings(list(headings, state.lang)));
+    const found = ["email", "phone", "linkedin"].filter((k) => data.fields[k]).map((k) => s.contact_items[k]);
+    const and = state.lang === "tr" ? " ve " : " and ";
+    if (found.length) items.push(s.contact(found.length < 2 ? found[0] : found.slice(0, -1).join(", ") + and + found[found.length - 1]));
+  }
+  const box = $("good");
+  box.replaceChildren(...items.map((text) => el("li", "", text)));
+  $("good-title").hidden = !items.length;
 }
 
 function fill(list, findings, label) {
