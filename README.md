@@ -46,7 +46,10 @@ lines are needed.
 
 The page is in English and Turkish.
 
-### Command line
+### For developers: command line
+
+The same analysis without the browser, for checking many files at once or feeding the JSON
+report to another program.
 
 ```bash
 resume-xray my_resume.pdf                     # can an ATS read it?
@@ -114,11 +117,11 @@ before the tool's answer is known. Then the two are compared.
 | Round | Resumes | Agreement before any change | After fixes (no longer blind) |
 |---|---|---|---|
 | 1 | 22 (11 Turkish) | 164 of 204 expectations (80%) | 22 of 22 resumes agree fully |
-| 2 | 11 new (8 Turkish) | 83 of 97 expectations (86%) | 87 of 97 (90%); 96% without one wrong label |
+| 2 | 11 new (8 Turkish) | 83 of 97 expectations (86%) | 84 of 88 (95%), after one wrong label was corrected |
 
 Disagreements are not always the tool's fault. In round 2, one "resume" was a single image that
 looked selectable only because macOS Preview reads text in pictures (Live Text); the tool was
-right, and the labeling question now warns about it. Each disagreement and fix is listed in the
+right, so the label was corrected and the labeling question now warns about it. Each disagreement and fix is listed in the
 calibration table of [ALGORITHM.md](ALGORITHM.md).
 
 ## What it does not tell you
