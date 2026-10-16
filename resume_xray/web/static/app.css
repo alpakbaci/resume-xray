@@ -12,6 +12,7 @@
   --red: #D72F2F;
   --cream: #FCEEA7;
   --green: #3F9E6E;
+  --violet: #A99BE6;
   --ink: #F1F3F8;
   --muted: #C3CCE0;
   --line: rgba(241, 243, 248, 0.14);
@@ -161,7 +162,7 @@ textarea:focus, input[type="text"]:focus { border-color: var(--cream); }
 .chip.part { background: var(--cream); color: var(--deep); }
 .chip.no { background: rgba(215, 47, 47, .26); border-color: var(--red); color: #FFE2E2; }
 .chip.user { border-style: dotted; border-width: 1.5px; }
-.chip.gen { background: transparent; border-color: var(--line); color: var(--muted); }
+.chip.gen { background: rgba(169, 155, 230, .2); border-color: var(--violet); color: #EEEAFF; }
 .group.general { margin-top: 18px; }
 .chip.part.user { border-color: var(--deep); }
 .add { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
