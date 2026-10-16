@@ -26,7 +26,8 @@ This was the first rule of the project, not an afterthought:
 
 ## Run it
 
-You need Python 3.11 or newer ([python.org](https://www.python.org/downloads/)).
+You need Python 3.11 or newer ([python.org](https://www.python.org/downloads/)). On Windows, type `py`
+instead of `python3`.
 
 ```bash
 git clone https://github.com/<owner>/resume-xray.git
@@ -65,7 +66,8 @@ resume-xray my_resume.pdf --json              # machine-readable report
 **Three readers.** ATSs turn your file into plain text first, and different text extractors
 read the same PDF differently. resume-xray reads every PDF three ways:
 
-- in the order the text is stored in the file, like Apache Tika and PDFBox with default settings;
+- in the order the text is stored in the file, modeled on Apache Tika and PDFBox with their default
+  settings;
 - top to bottom across the page by position;
 - column by column.
 
@@ -90,8 +92,8 @@ decides, so one serious problem is never averaged away.
 English and Turkish, for software, data, AI, product, project, finance and marketing),
 plus words that look technical such as `C++` or `ALLCAPS` names. Requirements count fully,
 nice-to-haves less. General skills such as communication are shown but not counted, because
-recruiters rarely search for them. The exact word counts fully; other word forms and synonyms count half,
-because a plain search would miss them. You can add or remove keywords yourself, or skip the job
+recruiters rarely search for them. The exact word counts fully; other word forms and synonyms
+count half, because a plain search would miss them. You can add or remove keywords yourself, or skip the job
 ad entirely.
 
 **No single "ATS score".** No ATS publishes one, and blending readability and keywords into one
@@ -122,8 +124,8 @@ before the tool's answer is known. Then the two are compared.
 
 Disagreements are not always the tool's fault. In round 2, one "resume" was a single image that
 looked selectable only because macOS Preview reads text in pictures (Live Text); the tool was
-right, so the label was corrected and the labeling question now warns about it. Each disagreement and fix is listed in the
-calibration table of [ALGORITHM.md](ALGORITHM.md).
+right, so the label was corrected and the labeling question now warns about it. Each
+disagreement and fix is listed in the calibration table of [ALGORITHM.md](ALGORITHM.md).
 
 ## What it does not tell you
 
