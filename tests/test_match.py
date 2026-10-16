@@ -154,14 +154,14 @@ def test_real_job_description_quirks():
 
 
 def test_user_terms(tmp_path):
-    document, report = resume(tmp_path, "EXPERIENCE", "Product strategy for k8s platform", "SKILLS", "Python")
-    job = "Requirements\nPython, Terraform and a strong product strategy\n"
+    document, report = resume(tmp_path, "EXPERIENCE", "Growth experiments for k8s platform", "SKILLS", "Python")
+    job = "Requirements\nPython, Terraform and strong growth experiments\n"
 
-    match = match_job(document, job, report.section_lines, add=["product strategy", "Kubernetes"], remove=["Terraform"])
+    match = match_job(document, job, report.section_lines, add=["growth experiments", "Kubernetes"], remove=["Terraform"])
     terms = {t.name: t for t in match.terms}
 
     assert "Terraform" not in terms
-    assert terms["product strategy"].source == "user" and terms["product strategy"].level == "exact"
+    assert terms["growth experiments"].source == "user" and terms["growth experiments"].level == "exact"
     # An added dictionary skill keeps its synonyms.
     assert terms["Kubernetes"].level == "synonym"
     assert terms["Python"].source == "job"
