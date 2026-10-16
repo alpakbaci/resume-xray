@@ -45,6 +45,7 @@ function applyLanguage() {
     node.placeholder = strings[node.dataset.i18nPlaceholder];
   });
   document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === state.lang)));
+  renderMine();
   if (state.data) render(state.data);
 }
 
@@ -52,9 +53,7 @@ function applyLanguage() {
 
 function setFile(file) {
   if (!file) return;
-  state.file = file;
-  state.add = [];
-  state.remove = [];
+  state.file = file;  // keywords stay: the same search can be tried on another resume
   analyze();
 }
 
@@ -251,6 +250,37 @@ function removeTerm(term) {
     state.add = state.add.filter((w) => w.toLocaleLowerCase() !== key && w.toLocaleLowerCase() !== term.name.toLocaleLowerCase());
   }
   state.remove.push(term.job_wording);
+  renderMine();
+  analyze();
+}
+
+// The user's own keywords, listed under their input so they can be typed before a resume is chosen.
+function renderMine() {
+  const box = $("mine");
+  box.replaceChildren();
+  for (const word of state.add) {
+    const button = el("button", "chip mine-chip user");
+    button.type = "button";
+    button.setAttribute("aria-label", t().mine_remove(word));
+    button.append(el("span", "", word), el("span", "x", "×"));
+    button.addEventListener("click", () => {
+      state.add = state.add.filter((w) => w !== word);
+      renderMine();
+      analyze();
+    });
+    box.append(button);
+  }
+}
+
+function addWords(text) {
+  const known = new Set(state.add.map((w) => w.toLocaleLowerCase()));
+  for (const word of text.split(/[,;\n]/).map((w) => w.trim()).filter(Boolean)) {
+    const key = word.toLocaleLowerCase();
+    state.remove = state.remove.filter((w) => w.toLocaleLowerCase() !== key);
+    if (!known.has(key)) state.add.push(word);
+    known.add(key);
+  }
+  renderMine();
   analyze();
 }
 
@@ -309,12 +339,14 @@ function wire() {
       showAddError(true);
       return;
     }
-    state.add.push(word);
-    state.remove = state.remove.filter((w) => w.toLocaleLowerCase() !== word.toLocaleLowerCase());
     addInput.value = "";
-    analyze();
+    addWords(word);
   });
   addInput.addEventListener("input", () => showAddError(false));
+  $("add-more").addEventListener("click", () => {
+    addInput.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    addInput.focus({ preventScroll: true });
+  });
 
   document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => setLanguage(b.dataset.lang)));
 }

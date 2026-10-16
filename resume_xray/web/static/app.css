@@ -158,6 +158,11 @@ textarea:focus, input[type="text"]:focus { border-color: var(--cream); }
 .add { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 .add input { flex: 1; min-width: 200px; height: 38px; padding: 0 12px; }
 .add-error { margin: 8px 0 0; }
+.field-label { display: block; font-size: 14px; color: var(--muted); margin: 18px 0 8px; }
+.step-hint { margin: -4px 0 0; max-width: 640px; }
+.mine { margin-top: 10px; }
+.mine-chip { background: var(--field); border-color: var(--cream); color: var(--ink); }
+.link { background: none; border: none; padding: 0; color: var(--cream); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: inherit; }
 .hint { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
 .checks { margin-top: 22px; }
 .checks li { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }

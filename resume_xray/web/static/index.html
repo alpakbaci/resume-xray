@@ -106,13 +106,20 @@
     </label>
     <p class="error" id="file-error" role="alert" hidden></p>
 
-    <p class="step"><span class="n">2</span><span data-i18n="step_job">Job description</span> <span class="opt" data-i18n="step_job_opt">optional, for keyword matching</span></p>
-    <label class="visually-hidden" for="job" data-i18n="step_job">Job description</label>
+    <p class="step"><span class="n">2</span><span data-i18n="step_job">Keywords to search for</span> <span class="opt" data-i18n="step_job_opt">optional</span></p>
+    <p class="hint step-hint" data-i18n="step_job_hint">Paste a job ad and the keywords are picked out for you, or type your own. Add any keyword that is missing.</p>
+    <label class="field-label" for="job" data-i18n="job_label">Job ad</label>
     <textarea id="job" rows="5" data-i18n-placeholder="job_placeholder" placeholder="Paste the job ad here"></textarea>
     <div class="title-row">
       <label for="title" data-i18n="title_label">Job title</label>
       <input id="title" type="text" autocomplete="off" data-i18n-placeholder="title_placeholder" placeholder="Taken from the job ad when it starts with one">
     </div>
+    <label class="field-label" for="add-input" data-i18n="add_label">Your own keywords</label>
+    <form class="add" id="add-form">
+      <input id="add-input" type="text" autocomplete="off" data-i18n-placeholder="add_placeholder" placeholder="e.g. Scrum Master, SQL, Figma">
+      <button type="submit" class="btn ghost" data-i18n="add">Add</button>
+    </form>
+    <div class="mine" id="mine"></div>
   </section>
 
   <section class="results" id="results" aria-live="polite" hidden>
@@ -129,15 +136,10 @@
     <p class="all-good" id="all-good" hidden data-i18n="all_good">Nothing to fix. Every reading method we tried reads your resume correctly.</p>
 
     <div id="keywords" hidden>
-      <h3 data-i18n="kw_title">Keywords from the job</h3>
+      <h3 data-i18n="kw_title">Keywords</h3>
       <div class="bar" id="bar" role="img"></div>
       <div id="groups"></div>
-      <form class="add" id="add-form">
-        <label class="visually-hidden" for="add-input" data-i18n="add_label">Add a keyword</label>
-        <input id="add-input" type="text" autocomplete="off" data-i18n-placeholder="add_placeholder" placeholder="Add a keyword, e.g. Scrum Master">
-        <button type="submit" class="btn ghost" data-i18n="add">Add</button>
-      </form>
-      <p class="hint" data-i18n="kw_hint">Dotted outline marks keywords you added. Click a keyword to remove it.</p>
+      <p class="hint"><span data-i18n="kw_hint">Dotted outline marks keywords you added. Click a keyword to remove it.</span> <button type="button" class="link" id="add-more" data-i18n="add_more">Add a keyword</button></p>
       <ul class="checks" id="checks"></ul>
     </div>
 
