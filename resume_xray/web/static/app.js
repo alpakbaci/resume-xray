@@ -159,7 +159,7 @@ function phrase(finding) {
   return make ? make(finding.params || {}, finding, state.lang) : [finding.title, finding.detail];
 }
 
-// Fixes and tips are two numbered lists; the number sits in a circle in the list's status color.
+// Fixes and tips are two lists; each item is tinted in its list's status color.
 function renderFindings(data) {
   const shown = data.findings.filter((f) => f.code !== "columns_ok");
   const fixes = shown.filter((f) => f.severity !== "info");
@@ -175,11 +175,9 @@ function fill(list, findings, label) {
   findings.forEach((finding, i) => {
     const [title, text] = phrase(finding);
     const item = el("li");
-    const n = el("span", "n", String(i + 1));
-    n.setAttribute("aria-hidden", "true");
     const body = el("span", "body");
     body.append(el("span", "visually-hidden", `${label} ${i + 1}: `), el("strong", "", title), el("span", "sub", text));
-    item.append(n, body);
+    item.append(body);
     list.append(item);
   });
 }
