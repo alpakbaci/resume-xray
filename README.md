@@ -30,7 +30,7 @@ You need Python 3.11 or newer ([python.org](https://www.python.org/downloads/)).
 instead of `python3`.
 
 ```bash
-git clone https://github.com/<owner>/resume-xray.git
+git clone https://github.com/alpakbaci/resume-xray.git
 cd resume-xray
 python3 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
