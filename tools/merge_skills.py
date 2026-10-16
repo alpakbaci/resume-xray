@@ -46,7 +46,11 @@ def main(args: list[str]) -> int:
             rejected.append(f"{key}: would merge existing skills {sorted(owners)}")
             continue
         target = owners.pop() if owners else None
-        fresh = [w for w in wordings if keys(w)[0] not in by_surface]
+        fresh, seen = [], set()
+        for w in wordings:  # "On-page SEO" and "On Page SEO" are one key: keep the first
+            if keys(w)[0] not in by_surface and keys(w)[0] not in seen:
+                fresh.append(w)
+                seen.add(keys(w)[0])
         clashes = [w for w in fresh if keys(w)[1] in by_stem and by_stem[keys(w)[1]] != target]
         if clashes:
             rejected.append(f"{key}: {clashes} stem like {sorted({by_stem[keys(w)[1]] for w in clashes})}")

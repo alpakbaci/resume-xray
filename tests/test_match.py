@@ -148,7 +148,7 @@ def test_real_job_description_quirks():
     names = {t.name for t in job.terms}
     assert job.title is None
     assert "Excel" not in names
-    assert {"AI", "ARPU", "LTV"} <= names
+    assert {"Artificial Intelligence", "ARPU", "Customer Lifetime Value"} <= names
     assert parse_job("Senior Backend Developer\nRequirements\nPython\n").title == "Senior Backend Developer"
     assert parse_job("Requirements\nPython\n", title="Data Engineer").title == "Data Engineer"
 
